@@ -161,8 +161,8 @@ function executePythonPipeline(run, caseData) {
 
   const demandText = caseData?.text || 'DEMANDA SINTÉTICA — Descontos associativos não autorizados em benefício previdenciário.'
   const args = ['-m', 'src.main', '--demand', demandText]
-  if (run.mode === 'replay') {
-    args.push('--offline')
+  if (run.mode === 'replay' || run.mode === 'fixture' || run.mode === 'live') {
+    args.push('--replay')
   }
 
   const child = spawn('python', args, {
@@ -221,6 +221,9 @@ function executePythonPipeline(run, caseData) {
         evidence_ids: ass.evidence_ids || ['1023372-41.2022.8.26.0405', '1002937-34.2022.8.26.0506', '0013922-19.2007.8.26.0405'],
         abstention_reasons: ass.limitations || ['A política determinística exige ao menos 3 sentenças pertinentes (limiar 65%).'],
         calibration_status: 'not_validated',
+        pdf_url: '/v1/reports/telemetria.pdf',
+        debate: ass.debate || [],
+        report_markdown: ass.report_markdown || '',
         analysis: {
           synthetic: true,
           demand: manifestData.original_demand || demandText,
@@ -303,6 +306,35 @@ const server = createServer(async (req, res) => {
   const path = url.pathname
 
   try {
+    if ((req.method === 'GET' || req.method === 'HEAD') && (path === '/v1/reports/telemetria.pdf' || path === '/reports/telemetria.pdf')) {
+      const pdfPath = join(projectRoot, 'RELATORIO_TELEMETRIA_E2E.pdf')
+      if (existsSync(pdfPath)) {
+        res.writeHead(200, {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'inline; filename="RELATORIO_TELEMETRIA_E2E.pdf"',
+          'Access-Control-Allow-Origin': '*',
+        })
+        return res.end(readFileSync(pdfPath))
+      }
+      return json(res, 404, { error: { code: 'pdf_not_found', message: 'Relatório PDF não encontrado' } })
+    }
+
+    if (req.method === 'GET' && (path === '/' || path === '/dashboard' || path === '/demo')) {
+      const htmlPath = join(projectRoot, 'demo_dashboard.html')
+      if (existsSync(htmlPath)) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        return res.end(readFileSync(htmlPath))
+      }
+    }
+
+    if (req.method === 'GET' && path === '/relatorio') {
+      const htmlPath = join(projectRoot, 'relatorio_telemetria.html')
+      if (existsSync(htmlPath)) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        return res.end(readFileSync(htmlPath))
+      }
+    }
+
     if (req.method === 'GET' && path === '/v1') return json(res, 200, { name: 'Neuralake API', version: '0.1.0', mode: 'hybrid' })
     if (req.method === 'GET' && path === '/v1/connectors') return json(res, 200, connectors)
 

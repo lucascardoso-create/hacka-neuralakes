@@ -51,6 +51,9 @@ export type AnalysisResult = {
   abstention_reasons?: string[]
   evidence_ids?: string[]
   calibration_status?: string
+  pdf_url?: string
+  report_markdown?: string
+  debate?: Array<{ role: string; speaker_name: string; argument: string }>
   provenance?: Record<string, unknown>
   analysis?: {
     synthetic: boolean

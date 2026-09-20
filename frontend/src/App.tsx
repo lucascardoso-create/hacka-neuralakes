@@ -490,6 +490,7 @@ function App() {
     if (current.status === 'completed' || current.status === 'awaiting_review') {
       const finalResult = await api.getResult(runId)
       setResult(finalResult)
+      setRightTab('data')
       setToast('Execução concluída. Resultado pronto para revisão.')
     } else {
       setToast(`Execução terminou como ${current.status}. Verifique os bloqueios.`)
@@ -732,7 +733,26 @@ function InspectorField({ label, children }: { label: string; children: React.Re
 
 function DataPanel({ result, mode }: { result: AnalysisResult; mode: RunMode }) {
   const analysis = result.analysis
-  return <div className="panel-content"><div className="panel-heading"><div className="eyebrow">Validated output</div><h2>Relatório de comparação</h2><span>schema v0.1 · {mode}</span></div><div className="json-card"><div><span>repetitividade</span><strong>{result.repetitividade ?? null}</strong></div><div><span>êxito</span><strong>{result.exito ?? null}</strong></div><div><span>evidências</span><strong>{result.evidence_ids?.length || 0}</strong></div><div><span>calibration_status</span><strong>{result.calibration_status || null}</strong></div></div>{analysis && <><InspectorField label={analysis.synthetic ? 'Demanda sintética' : 'Demanda'}><p>{analysis.demand}</p></InspectorField><InspectorField label="Método"><p>{analysis.methodology}</p></InspectorField><InspectorField label="Sentenças lidas"><div className="connections-list">{analysis.comparisons.map((item) => <div className="connection-row" key={item.id}><span className="connection-direction input">{Math.round(item.score * 100)}%</span><span className="connection-label"><strong>{item.id}</strong><br />{item.result}: {item.reason}</span></div>)}</div></InspectorField><InspectorField label="Conclusão"><p>{analysis.conclusion}</p></InspectorField></>}{result.abstention_reasons?.map((reason) => <div className="null-note" key={reason}><AlertCircle size={14} /> {reason}</div>)}<div className="null-note"><AlertCircle size={14} /> null significa desconhecido ou não medido; zero é um valor observado.</div></div>
+  return <div className="panel-content"><div className="panel-heading"><div className="eyebrow">Validated output</div><h2>Relatório de comparação & Telemetria</h2><span>schema v0.1 · {mode}</span></div>
+  <div style={{ margin: '14px 0' }}>
+    <a href="http://localhost:8000/v1/reports/telemetria.pdf" target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px 14px', backgroundColor: '#2563eb', color: '#ffffff', borderRadius: '6px', fontWeight: 600, fontSize: '13px', textDecoration: 'none', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.25)' }}>
+      <ArrowDownToLine size={16} /> Abrir Relatório Executivo e Telemetria (PDF)
+    </a>
+  </div>
+  <div className="json-card"><div><span>repetitividade</span><strong>{result.repetitividade ?? null}</strong></div><div><span>êxito</span><strong>{result.exito ?? null}</strong></div><div><span>evidências</span><strong>{result.evidence_ids?.length || 0}</strong></div><div><span>calibration_status</span><strong>{result.calibration_status || null}</strong></div></div>
+  {result.debate && result.debate.length > 0 && (
+    <InspectorField label="Debate Dialético Multi-Agente (A2A)">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+        {result.debate.map((turn, idx) => (
+          <div key={idx} style={{ padding: '8px 10px', borderRadius: '6px', fontSize: '11.5px', lineHeight: '1.4', background: turn.role === 'advocate' ? '#eff6ff' : turn.role === 'risk_auditor' ? '#fef2f2' : '#f0fdf4', borderLeft: `3px solid ${turn.role === 'advocate' ? '#3b82f6' : turn.role === 'risk_auditor' ? '#ef4444' : '#10b981'}`, color: '#1e293b' }}>
+            <strong style={{ display: 'block', marginBottom: '3px', color: turn.role === 'advocate' ? '#1d4ed8' : turn.role === 'risk_auditor' ? '#b91c1c' : '#047857' }}>{turn.speaker_name}</strong>
+            <span style={{ whiteSpace: 'pre-line' }}>{turn.argument}</span>
+          </div>
+        ))}
+      </div>
+    </InspectorField>
+  )}
+  {analysis && <><InspectorField label={analysis.synthetic ? 'Demanda sintética' : 'Demanda'}><p>{analysis.demand}</p></InspectorField><InspectorField label="Método"><p>{analysis.methodology}</p></InspectorField><InspectorField label="Sentenças lidas"><div className="connections-list">{analysis.comparisons.map((item) => <div className="connection-row" key={item.id}><span className="connection-direction input">{Math.round(item.score * 100)}%</span><span className="connection-label"><strong>{item.id}</strong><br />{item.result}: {item.reason}</span></div>)}</div></InspectorField><InspectorField label="Conclusão"><p>{analysis.conclusion}</p></InspectorField></>}{result.abstention_reasons?.map((reason) => <div className="null-note" key={reason}><AlertCircle size={14} /> {reason}</div>)}<div className="null-note"><AlertCircle size={14} /> null significa desconhecido ou não medido; zero é um valor observado.</div></div>
 }
 
 function LogsPanel({ events }: { events: Event[] }) {
