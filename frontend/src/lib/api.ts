@@ -5,6 +5,7 @@ export type FlowNodePayload = {
   label: string
   connector?: string
   operation?: string
+  position?: { x: number; y: number }
 }
 
 export type ApiError = Error & {
@@ -61,7 +62,8 @@ export type Connector = {
   capabilities?: string[]
 }
 
-const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000/v1').replace(/\/$/, '')
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
+const baseUrl = (configuredApiUrl || '/v1').replace(/\/$/, '')
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl}${path}`, {

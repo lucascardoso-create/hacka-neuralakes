@@ -13,16 +13,6 @@ const connectors = [
   { id: 'docs_claw', plugin_id: 'reporting', configured: true, mode_supported: ['fixture', 'replay'], capabilities: ['render_report'] },
 ]
 
-const steps = [
-  ['ingest', 'step_started', 'Entrada do caso validada'],
-  ['extract', 'step_started', 'Perfil do caso extraído com referências'],
-  ['plan', 'step_started', 'Plano de pesquisa aprovado pela política'],
-  ['research', 'evidence_collected', '8 evidências verificadas encontradas'],
-  ['compare', 'step_started', 'Comparação contextual concluída'],
-  ['decision', 'decision_ready', 'Jev retornou as probabilidades Noul'],
-  ['report', 'report_ready', 'Relatório aguardando revisão humana'],
-]
-
 function json(res, status, payload) {
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -31,6 +21,92 @@ function json(res, status, payload) {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   })
   res.end(JSON.stringify(payload))
+}
+
+function graphOrder(nodes, edges) {
+  const indegree = new Map(nodes.map((node) => [node.id, 0]))
+  const outgoing = new Map()
+  for (const [from, to] of edges) {
+    indegree.set(to, (indegree.get(to) || 0) + 1)
+    outgoing.set(from, [...(outgoing.get(from) || []), to])
+  }
+  const queue = nodes.filter((node) => indegree.get(node.id) === 0).map((node) => node.id)
+  const orderedIds = []
+  while (queue.length) {
+    const current = queue.shift()
+    orderedIds.push(current)
+    for (const next of outgoing.get(current) || []) {
+      const nextDegree = (indegree.get(next) || 0) - 1
+      indegree.set(next, nextDegree)
+      if (nextDegree === 0) queue.push(next)
+    }
+  }
+  return orderedIds
+}
+
+function normalizeGraph(body) {
+  const nodes = Array.isArray(body.nodes) && body.nodes.length
+    ? body.nodes
+    : [{ id: 'ingest', label: 'Entrada do caso', operation: 'create_case' }]
+  const edges = Array.isArray(body.edges) ? body.edges : []
+  const ids = new Set()
+  const errors = []
+
+  for (const node of nodes) {
+    if (!node || typeof node.id !== 'string' || !node.id) errors.push('Todo componente precisa de um id.')
+    else if (ids.has(node.id)) errors.push(`ID de componente duplicado: ${node.id}`)
+    else ids.add(node.id)
+  }
+  if (errors.length) return { errors, nodes, edges, orderedNodes: [] }
+  const seenEdges = new Set()
+  for (const edge of edges) {
+    if (!Array.isArray(edge) || edge.length !== 2) {
+      errors.push('Cada conexão precisa ter origem e destino.')
+      continue
+    }
+    const [from, to] = edge
+    const key = `${from}->${to}`
+    if (!ids.has(from) || !ids.has(to)) errors.push(`Conexão aponta para componente inexistente: ${key}`)
+    if (from === to) errors.push(`Componente não pode apontar para ele mesmo: ${from}`)
+    if (seenEdges.has(key)) errors.push(`Conexão duplicada: ${key}`)
+    seenEdges.add(key)
+  }
+  if (errors.length) return { errors, nodes, edges, orderedNodes: [] }
+  if (ids.has('intake')) {
+    const reachable = new Set(['intake'])
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const [from, to] of edges) {
+        if (reachable.has(from) && !reachable.has(to)) {
+          reachable.add(to)
+          changed = true
+        }
+      }
+    }
+    const disconnected = nodes.filter((node) => !reachable.has(node.id)).map((node) => node.label || node.id)
+    if (disconnected.length) errors.push(`Componentes fora do caminho da Entrada do caso: ${disconnected.join(', ')}.`)
+  }
+  if (errors.length) return { errors, nodes, edges, orderedNodes: [] }
+
+  const orderedIds = graphOrder(nodes, edges)
+  if (orderedIds.length !== nodes.length) errors.push('O grafo contém um ciclo e não pode ser executado.')
+  if (errors.length) return { errors, nodes, edges, orderedNodes: [] }
+  const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  return { errors, nodes, edges, orderedNodes: orderedIds.map((id) => nodeById.get(id)) }
+}
+
+function stepForNode(node) {
+  const kind = node.operation === 'search_decisions'
+    ? 'evidence_collected'
+    : node.operation === 'evaluate_noul'
+      ? 'decision_ready'
+      : node.operation === 'render_report'
+        ? 'report_ready'
+        : node.operation === 'evaluate_policy'
+          ? 'policy_evaluated'
+          : 'step_started'
+  return [node.id, kind, `${node.label || node.id} executado pelo backend`]
 }
 
 async function readBody(req) {
@@ -61,6 +137,7 @@ function publicRun(run) {
     progress: { completed: run.completed, total: run.steps.length },
     result_ref: run.status === 'awaiting_review' ? `/v1/runs/${run.id}/result` : null,
     blockers: [],
+    graph: run.graph,
   }
 }
 
@@ -72,7 +149,7 @@ function executeFixture(run) {
       run.currentStep = stepId
       run.completed = index + 1
       event(run, kind, 'succeeded', message, stepId)
-      if (index === steps.length - 1) {
+      if (index === run.steps.length - 1) {
         run.status = 'awaiting_review'
         run.currentStep = 'review'
         run.result = {
@@ -117,10 +194,11 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && caseMatch) {
       if (!cases.has(caseMatch[1])) return json(res, 404, { error: { code: 'case_not_found', message: 'Caso não encontrado' } })
       const body = await readBody(req)
+      const graph = normalizeGraph(body)
+      if (graph.errors.length) return json(res, 422, { error: { code: 'invalid_graph', message: graph.errors[0], retryable: false, details_safe: graph.errors } })
       const id = `run_${randomUUID().slice(0, 8)}`
-      const requestedNodes = Array.isArray(body.nodes) && body.nodes.length ? body.nodes : [{ id: 'ingest', label: 'Entrada do caso', operation: 'create_case' }]
-      const runSteps = requestedNodes.map((node) => [node.id, node.operation === 'search_decisions' ? 'evidence_collected' : node.operation === 'evaluate_noul' ? 'decision_ready' : node.operation === 'render_report' ? 'report_ready' : 'step_started', `${node.label || node.id} executado pelo backend`])
-      const run = { id, caseId: caseMatch[1], mode: body.mode || 'fixture', status: 'running', currentStep: requestedNodes[0].id, completed: 0, events: [], result: null, steps: runSteps }
+      const runSteps = graph.orderedNodes.map(stepForNode)
+      const run = { id, caseId: caseMatch[1], mode: body.mode || 'fixture', status: 'running', currentStep: graph.orderedNodes[0].id, completed: 0, events: [], result: null, steps: runSteps, graph: { nodes: graph.nodes, edges: graph.edges } }
       runs.set(id, run)
       executeFixture(run)
       return json(res, 202, { id, status_url: `/v1/runs/${id}` })

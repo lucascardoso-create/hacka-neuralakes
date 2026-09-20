@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   AlertCircle,
@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Sparkles,
   Square,
+  Trash2,
   Upload,
   X,
   Zap,
@@ -49,6 +50,16 @@ type FlowNode = {
   detail: string
   connector?: string
   operation?: string
+}
+
+type NodeDrag = {
+  id: NodeId
+  pointerId: number
+  startX: number
+  startY: number
+  originX: number
+  originY: number
+  moved: boolean
 }
 
 type NodeTemplate = Omit<FlowNode, 'id' | 'x' | 'y'> & { category: string }
@@ -98,9 +109,86 @@ function formatProbability(value: number | null | undefined) {
 
 function statusForNode(id: NodeId, active: NodeId | null, completed: Set<NodeId>, blocked: boolean): NodeState {
   if (blocked && id === active) return 'blocked'
-  if (completed.has(id)) return 'done'
   if (id === active) return 'running'
+  if (completed.has(id)) return 'done'
   return 'idle'
+}
+
+function hasPath(edges: Array<[NodeId, NodeId]>, from: NodeId, target: NodeId) {
+  const visited = new Set<NodeId>()
+  const pending = [from]
+  while (pending.length) {
+    const current = pending.pop()
+    if (!current || visited.has(current)) continue
+    if (current === target) return true
+    visited.add(current)
+    for (const [source, destination] of edges) {
+      if (source === current && !visited.has(destination)) pending.push(destination)
+    }
+  }
+  return false
+}
+
+function executionOrder(nodes: FlowNode[], edges: Array<[NodeId, NodeId]>) {
+  const indegree = new Map(nodes.map((node) => [node.id, 0]))
+  const outgoing = new Map<NodeId, NodeId[]>()
+  for (const [from, to] of edges) {
+    indegree.set(to, (indegree.get(to) || 0) + 1)
+    outgoing.set(from, [...(outgoing.get(from) || []), to])
+  }
+  const queue = nodes.filter((node) => indegree.get(node.id) === 0).map((node) => node.id)
+  const ordered: NodeId[] = []
+  while (queue.length) {
+    const current = queue.shift()
+    if (!current) continue
+    ordered.push(current)
+    for (const next of outgoing.get(current) || []) {
+      const nextDegree = (indegree.get(next) || 0) - 1
+      indegree.set(next, nextDegree)
+      if (nextDegree === 0) queue.push(next)
+    }
+  }
+  return ordered
+}
+
+function reachableFrom(edges: Array<[NodeId, NodeId]>, source: NodeId) {
+  const reachable = new Set<NodeId>([source])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const [from, to] of edges) {
+      if (reachable.has(from) && !reachable.has(to)) {
+        reachable.add(to)
+        changed = true
+      }
+    }
+  }
+  return reachable
+}
+
+function validateGraph(nodes: FlowNode[], edges: Array<[NodeId, NodeId]>) {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const ids = new Set<NodeId>()
+  for (const node of nodes) {
+    if (ids.has(node.id)) errors.push(`ID duplicado: ${node.id}`)
+    ids.add(node.id)
+  }
+  if (!ids.has('intake')) errors.push('O fluxo precisa manter a Entrada do caso.')
+  const seenEdges = new Set<string>()
+  for (const [from, to] of edges) {
+    const edgeKey = `${from}->${to}`
+    if (!ids.has(from) || !ids.has(to)) errors.push(`Conexão aponta para componente inexistente: ${edgeKey}`)
+    if (from === to) errors.push('Um componente não pode se conectar a ele mesmo.')
+    if (seenEdges.has(edgeKey)) errors.push(`Conexão duplicada: ${edgeKey}`)
+    seenEdges.add(edgeKey)
+    if (from !== to && hasPath(edges, to, from)) errors.push(`A conexão ${edgeKey} cria um ciclo.`)
+  }
+  if (executionOrder(nodes, edges).length !== nodes.length) errors.push('O fluxo precisa ser acíclico para executar.')
+  const reachable = ids.has('intake') ? reachableFrom(edges, 'intake') : new Set<NodeId>()
+  const disconnected = nodes.filter((node) => !reachable.has(node.id)).map((node) => node.label)
+  if (disconnected.length) warnings.push(`Componentes fora do caminho da Entrada do caso: ${disconnected.join(', ')}.`)
+  return { errors, warnings }
 }
 
 function App() {
@@ -118,7 +206,7 @@ function App() {
   const [events, setEvents] = useState<Event[]>(sampleEvents)
   const [result, setResult] = useState<AnalysisResult>(demoResult)
   const [activeNode, setActiveNode] = useState<NodeId | null>(null)
-  const [completedNodes, setCompletedNodes] = useState<Set<NodeId>>(new Set(nodes.map((node) => node.id)))
+  const [completedNodes, setCompletedNodes] = useState<Set<NodeId>>(new Set())
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'execution' | 'data' | 'logs'>('execution')
@@ -126,6 +214,9 @@ function App() {
   const [testingNode, setTestingNode] = useState(false)
   const [connectionMode, setConnectionMode] = useState(false)
   const [connectionSource, setConnectionSource] = useState<NodeId | null>(null)
+  const canvasNodesRef = useRef<HTMLDivElement>(null)
+  const nodeDragRef = useRef<NodeDrag | null>(null)
+  const suppressNodeClickRef = useRef(false)
 
   const probeBackend = useCallback(async () => {
     try {
@@ -146,13 +237,26 @@ function App() {
   }, [toast])
 
   const nodeById = useMemo(() => Object.fromEntries(nodes.map((node) => [node.id, node])) as Record<NodeId, FlowNode>, [nodes])
+  const graphOrder = useMemo(() => executionOrder(nodes, edges), [nodes, edges])
+  const graphValidation = useMemo(() => validateGraph(nodes, edges), [nodes, edges])
 
   const addNode = (template: NodeTemplate) => {
     const id = `${template.operation || 'node'}_${crypto.randomUUID().slice(0, 6)}`
     const column = nodes.length % 6
     const row = Math.floor(nodes.length / 6)
     const newNode: FlowNode = { ...template, id, x: 54 + column * 198, y: 204 + row * 142 }
-    const previous = nodes.at(-1)
+    const reachable = new Set<NodeId>(['intake'])
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const [from, to] of edges) {
+        if (reachable.has(from) && !reachable.has(to)) {
+          reachable.add(to)
+          changed = true
+        }
+      }
+    }
+    const previous = [...nodes].reverse().find((node) => reachable.has(node.id))
     setNodes((current) => [...current, newNode])
     if (previous) setEdges((current) => [...current, [previous.id, id]])
     setSelectedNode(id)
@@ -162,10 +266,18 @@ function App() {
       next.delete(id)
       return next
     })
-    setToast(`${template.label} adicionado ao fluxo.`)
+    setToast(`${template.label} adicionado e conectado após ${previous?.label || 'a Entrada do caso'}.`)
+  }
+
+  const startConnectionFrom = (nodeId: NodeId) => {
+    setSelectedNode(nodeId)
+    setConnectionMode(true)
+    setConnectionSource(nodeId)
+    setToast('Origem selecionada. Clique no destino no canvas ou na lista de componentes.')
   }
 
   const handleNodeClick = (nodeId: NodeId) => {
+    if (suppressNodeClickRef.current) return
     setSelectedNode(nodeId)
     if (!connectionMode) return
     if (!connectionSource) {
@@ -176,6 +288,11 @@ function App() {
     if (connectionSource === nodeId) {
       setConnectionSource(null)
       setToast('Conexão cancelada.')
+      return
+    }
+    if (hasPath(edges, nodeId, connectionSource)) {
+      setConnectionSource(null)
+      setToast('Essa conexão criaria um ciclo. Escolha outro destino.')
       return
     }
     const alreadyConnected = edges.some(([from, to]) => from === connectionSource && to === nodeId)
@@ -194,13 +311,122 @@ function App() {
     event.stopPropagation()
     setSelectedNode(nodeId)
     if (port === 'output') {
-      setConnectionMode(true)
-      setConnectionSource(nodeId)
-      setToast('Saída selecionada. Clique no nó que deve receber os dados.')
+      startConnectionFrom(nodeId)
       return
     }
-    if (connectionSource && connectionSource !== nodeId) handleNodeClick(nodeId)
+    if (connectionSource && connectionSource !== nodeId) {
+      handleNodeClick(nodeId)
+    } else if (!connectionSource) {
+      setToast('Selecione a porta de saída do componente primeiro.')
+    }
   }
+
+  const removeEdge = (from: NodeId, to: NodeId) => {
+    setEdges((current) => current.filter(([source, destination]) => source !== from || destination !== to))
+    setToast('Conexão removida do fluxo.')
+  }
+
+  const repairGraph = () => {
+    if (loading) {
+      setToast('Pare a execução antes de reparar o fluxo.')
+      return
+    }
+    const nodeIds = new Set(nodes.map((node) => node.id))
+    const cleanEdges = edges.filter(([from, to], index, current) => from !== to && nodeIds.has(from) && nodeIds.has(to) && current.findIndex(([source, destination]) => source === from && destination === to) === index)
+    let repaired = cleanEdges
+    if (executionOrder(nodes, repaired).length !== nodes.length) {
+      repaired = nodes.slice(0, -1).map((node, index) => [node.id, nodes[index + 1].id] as [NodeId, NodeId])
+    }
+    let reachable = reachableFrom(repaired, 'intake')
+    for (const node of nodes) {
+      if (node.id === 'intake' || reachable.has(node.id)) continue
+      const anchor = [...nodes].reverse().find((candidate) => reachable.has(candidate.id) && !repaired.some(([from]) => from === candidate.id))?.id || 'intake'
+      if (anchor !== node.id && !hasPath(repaired, node.id, anchor)) {
+        repaired = [...repaired, [anchor, node.id]]
+        reachable = reachableFrom(repaired, 'intake')
+      }
+    }
+    setEdges(repaired)
+    const added = repaired.length - edges.length
+    setToast(added > 0 ? `${added} conexão(ões) restaurada(s) no fluxo.` : 'O fluxo já estava conectado.')
+  }
+
+  const removeNode = (nodeId: NodeId) => {
+    if (loading) {
+      setToast('Pare a execução antes de remover um componente.')
+      return
+    }
+    if (nodeId === 'intake') {
+      setToast('A Entrada do caso é obrigatória pela spec e não pode ser removida.')
+      return
+    }
+    const nextNode = nodes.find((node) => node.id !== nodeId)
+    const incoming = edges.filter(([, to]) => to === nodeId).map(([from]) => from)
+    const outgoing = edges.filter(([from]) => from === nodeId).map(([, to]) => to)
+    const bridges: Array<[NodeId, NodeId]> = incoming.flatMap((from) => outgoing.map((to) => [from, to] as [NodeId, NodeId]))
+    setNodes((current) => current.filter((node) => node.id !== nodeId))
+    setEdges((current) => {
+      const retained = current.filter(([from, to]) => from !== nodeId && to !== nodeId)
+      const additions = bridges.filter(([from, to]) => !retained.some(([source, destination]) => source === from && destination === to))
+      return [...retained, ...additions]
+    })
+    setCompletedNodes((current) => {
+      const next = new Set(current)
+      next.delete(nodeId)
+      return next
+    })
+    if (connectionSource === nodeId) {
+      setConnectionSource(null)
+      setConnectionMode(false)
+    }
+    setSelectedNode(nextNode?.id || 'intake')
+    setToast(bridges.length ? 'Componente removido e o fluxo foi religado.' : 'Componente removido e conexões associadas apagadas.')
+  }
+
+  const handleNodePointerDown = (event: React.PointerEvent<HTMLButtonElement>, node: FlowNode) => {
+    if (connectionMode || event.button !== 0 || (event.target as HTMLElement).closest('.node-port, .node-delete-control')) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    nodeDragRef.current = { id: node.id, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: node.x, originY: node.y, moved: false }
+  }
+
+  const handleNodePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = nodeDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < 4) return
+    drag.moved = true
+    const canvasRect = canvasNodesRef.current?.getBoundingClientRect()
+    const scale = canvasRect && canvasRect.width ? canvasRect.width / 1450 : 1
+    const nextX = Math.max(12, Math.min(1450 - 158 - 12, drag.originX + deltaX / scale))
+    const nextY = Math.max(12, Math.min(590 - 84 - 12, drag.originY + deltaY / scale))
+    setNodes((current) => current.map((node) => node.id === drag.id ? { ...node, x: nextX, y: nextY } : node))
+  }
+
+  const handleNodePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = nodeDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    if (drag.moved) {
+      suppressNodeClickRef.current = true
+      window.setTimeout(() => { suppressNodeClickRef.current = false }, 0)
+      setToast('Componente reposicionado no plano.')
+    }
+    nodeDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault()
+        removeNode(selectedNode)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [selectedNode, loading, nodes])
 
   const testSelectedNode = async () => {
     if (!selected || testingNode) return
@@ -216,12 +442,22 @@ function App() {
     }
   }
 
+  const syncRunProgress = useCallback((current: Run) => {
+    const terminal = ['completed', 'awaiting_review', 'failed', 'blocked', 'partial', 'cancelled'].includes(current.status)
+    const completedCount = Math.min(current.progress?.completed || 0, graphOrder.length)
+    let completed = graphOrder.slice(0, completedCount)
+    if (!terminal && current.current_step) completed = completed.filter((nodeId) => nodeId !== current.current_step)
+    setCompletedNodes(new Set(completed))
+    setActiveNode(!terminal && current.current_step && nodeById[current.current_step] ? current.current_step : null)
+  }, [graphOrder, nodeById])
+
   const runLive = useCallback(async (runId: string) => {
     let cursor = 0
     let current: Run = { id: runId, status: 'running' }
     while (!['completed', 'awaiting_review', 'failed', 'blocked', 'partial', 'cancelled'].includes(current.status)) {
       current = await api.getRun(runId)
       setRun(current)
+      syncRunProgress(current)
       const eventResponse = await api.getEvents(runId, cursor)
       if (eventResponse.events.length) {
         cursor = eventResponse.next_cursor || eventResponse.events.at(-1)?.sequence || cursor
@@ -236,11 +472,16 @@ function App() {
     } else {
       setToast(`Execução terminou como ${current.status}. Verifique os bloqueios.`)
     }
+    syncRunProgress(current)
     setActiveNode(null)
-  }, [])
+  }, [syncRunProgress])
 
   const startRun = async () => {
     if (loading) return
+    if (graphValidation.errors.length || graphValidation.warnings.length) {
+      setToast(`Fluxo incompleto: ${graphValidation.errors[0] || graphValidation.warnings[0]}`)
+      return
+    }
     setLoading(true)
     setEvents([])
     setCompletedNodes(new Set())
@@ -254,7 +495,7 @@ function App() {
         target_claim_id: null,
         as_of_date: new Date().toISOString().slice(0, 10),
       })
-      const started = await api.startRun(createdCase.id, mode, nodes.map(({ id, label, connector, operation }) => ({ id, label, connector, operation })), edges)
+      const started = await api.startRun(createdCase.id, mode, nodes.map(({ id, label, connector, operation, x, y }) => ({ id, label, connector, operation, position: { x, y } })), edges)
       setRun({ id: started.id, status: 'running' })
       setToast(`Run ${mode} iniciado no backend.`)
       await runLive(started.id)
@@ -280,6 +521,8 @@ function App() {
   }
 
   const selected = nodeById[selectedNode]
+  const incomingEdges = edges.filter(([, to]) => to === selectedNode)
+  const outgoingEdges = edges.filter(([from]) => from === selectedNode)
   const statusLabel = run?.status || 'awaiting_review'
   const runIsActive = loading || ['running', 'queued', 'cancel_requested'].includes(run?.status || '')
   const currentConnectorIds = useMemo(() => new Set(connectors.map((connector) => connector.id)), [connectors])
@@ -338,10 +581,11 @@ function App() {
             {nodes.map((node) => {
               const Icon = node.icon
               const state = statusForNode(node.id, activeNode, completedNodes, run?.status === 'blocked')
-              return <button key={node.id} className={`node-list-item ${selectedNode === node.id ? 'selected' : ''}`} onClick={() => setSelectedNode(node.id)}>
+              return <button key={node.id} className={`node-list-item ${selectedNode === node.id ? 'selected' : ''} ${connectionSource === node.id ? 'connection-source' : ''}`} onClick={() => handleNodeClick(node.id)}>
                 <span className="node-list-icon" style={{ color: node.color, background: `${node.color}16` }}><Icon size={15} /></span>
                 <span className="node-list-copy"><strong>{node.label}</strong><span>{node.sublabel}</span></span>
                 <span className={`mini-status ${state}`} />
+                {node.id !== 'intake' && <span className="node-list-remove" role="button" tabIndex={0} aria-label={`Remover ${node.label} do painel`} title="Remover do painel" onClick={(event) => { event.stopPropagation(); removeNode(node.id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); removeNode(node.id) } }}><Trash2 size={12} /></span>}
               </button>
             })}
           </div>
@@ -355,13 +599,18 @@ function App() {
 
         <main className="workspace">
           <div className="workspace-toolbar">
-            <div className="toolbar-left"><button className="toolbar-button" onClick={() => setShowNodePicker(true)}><Plus size={15} /> Add node</button><button className={`toolbar-button ${connectionMode ? 'active' : ''}`} onClick={() => { setConnectionMode((current) => !current); setConnectionSource(null) }}><GitBranch size={15} /> {connectionMode ? 'Connecting…' : 'Connect'}</button><span className="toolbar-divider" /><button className="toolbar-icon"><RotateCcw size={15} /></button><button className="toolbar-icon"><ArrowDownToLine size={15} /></button></div>
+            <div className="toolbar-left"><button className="toolbar-button" onClick={() => setShowNodePicker(true)}><Plus size={15} /> Add node</button><button className={`toolbar-button ${connectionMode ? 'active' : ''}`} onClick={() => { const next = !connectionMode; setConnectionMode(next); setConnectionSource(null); setToast(next ? 'Clique na origem e depois no destino, no canvas ou na lista.' : 'Modo de conexão encerrado.') }}><GitBranch size={15} /> {connectionMode ? 'Connecting…' : 'Connect'}</button><button className="toolbar-button repair-button" onClick={repairGraph} title="Reconectar componentes fora do caminho"><RotateCcw size={14} /> Repair flow</button><span className="toolbar-divider" /><button className="toolbar-icon"><ArrowDownToLine size={15} /></button></div>
             <div className="toolbar-right"><span className="zoom-label">100%</span><button className="toolbar-icon"><Search size={15} /></button><button className="toolbar-icon"><LockKeyhole size={15} /></button></div>
           </div>
 
           <div className="canvas-area">
             <div className="canvas-grid" />
             <div className="canvas-badge"><Activity size={13} /> {nodes.length} nodes <span /> <Network size={13} /> {edges.length} connections</div>
+            <div className={`canvas-flow-status ${graphValidation.errors.length || graphValidation.warnings.length ? 'invalid' : runIsActive ? 'running' : ''}`}><span />{graphValidation.errors.length ? 'Fluxo inválido' : graphValidation.warnings.length ? 'Componentes desconectados' : activeNode ? `Executando: ${nodeById[activeNode]?.label || activeNode}` : run?.status || 'Fluxo pronto'}</div>
+            <div className="canvas-selection-panel">
+              <div className="canvas-selection-copy"><span className="eyebrow">Componente selecionado</span><strong>{selected.label}</strong><span>{statusForNode(selectedNode, activeNode, completedNodes, run?.status === 'blocked')} · {selected.connector || 'local'}</span></div>
+              <div className="canvas-selection-actions"><button className="selection-action" onClick={() => startConnectionFrom(selectedNode)}><GitBranch size={13} /> Conectar</button>{(graphValidation.errors.length || graphValidation.warnings.length) > 0 && <button className="selection-action" onClick={repairGraph}><RotateCcw size={13} /> Reparar</button>}<button className="selection-action danger" onClick={() => removeNode(selectedNode)} disabled={selectedNode === 'intake' || loading}><Trash2 size={13} /> Remover do fluxo</button></div>
+            </div>
             <svg className="flow-lines" viewBox="0 0 1450 590" preserveAspectRatio="none" aria-hidden="true">
               <defs><linearGradient id="line-gradient" x1="0" x2="1"><stop offset="0%" stopColor="#6d7788" /><stop offset="100%" stopColor="#a28cff" /></linearGradient></defs>
               {edges.map(([from, to]) => {
@@ -374,13 +623,13 @@ function App() {
                 return <path key={`${from}-${to}`} className="flow-edge" d={`M ${sx} ${sy} C ${sx + 45} ${sy}, ${tx - 45} ${ty}, ${tx} ${ty}`} />
               })}
             </svg>
-            <div className="canvas-nodes">
+            <div className="canvas-nodes" ref={canvasNodesRef}>
               {nodes.map((node) => {
                 const Icon = node.icon
                 const state = statusForNode(node.id, activeNode, completedNodes, run?.status === 'blocked')
-                return <button key={node.id} className={`flow-node ${selectedNode === node.id ? 'selected' : ''} ${connectionSource === node.id ? 'connecting-source' : ''} state-${state}`} style={{ left: node.x, top: node.y }} onClick={() => handleNodeClick(node.id)}>
+                return <button key={node.id} aria-label={`${node.label}. ${state}`} className={`flow-node ${selectedNode === node.id ? 'selected' : ''} ${connectionSource === node.id ? 'connecting-source' : ''} state-${state}`} style={{ left: node.x, top: node.y }} onPointerDown={(event) => handleNodePointerDown(event, node)} onPointerMove={handleNodePointerMove} onPointerUp={handleNodePointerUp} onClick={() => handleNodeClick(node.id)}>
                   <span className="node-port input" title="Conectar entrada" onClick={(event) => handlePortClick(event, node.id, 'input')} /><span className="node-port output" title="Conectar saída" onClick={(event) => handlePortClick(event, node.id, 'output')} />
-                  <span className="flow-node-header"><span className="flow-node-icon" style={{ color: node.color, background: `${node.color}19` }}><Icon size={16} /></span><span className="node-state-indicator">{state === 'done' ? <Check size={11} /> : state === 'running' ? <LoaderCircle size={12} className="spin" /> : state === 'blocked' ? <X size={11} /> : <span />}</span></span>
+                  <span className="flow-node-header"><span className="flow-node-icon" style={{ color: node.color, background: `${node.color}19` }}><Icon size={16} /></span><span className="node-header-actions"><span className="node-state-indicator">{state === 'done' ? <Check size={11} /> : state === 'running' ? <LoaderCircle size={12} className="spin" /> : state === 'blocked' ? <X size={11} /> : <span />}</span>{selectedNode === node.id && node.id !== 'intake' && <span className="node-delete-control" role="button" tabIndex={0} aria-label={`Remover ${node.label} do fluxo`} title="Remover do fluxo" onClick={(event) => { event.stopPropagation(); removeNode(node.id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); removeNode(node.id) } }}><Trash2 size={11} /></span>}</span></span>
                   <span className="flow-node-title">{node.label}</span><span className="flow-node-subtitle">{node.sublabel}</span>
                   <span className="flow-node-footer"><span>{node.connector}</span><MoreHorizontal size={13} /></span>
                 </button>
@@ -408,7 +657,22 @@ function App() {
             <InspectorField label="Connector"><div className="connector-value"><span className="connector-bullet" style={{ background: selected.color }} />{selected.connector}<span className="configured-badge">{selected.connector && currentConnectorIds.has(selected.connector) ? 'configured' : 'local'}</span></div></InspectorField>
             <InspectorField label="Status"><div className="inspector-status"><span className={`status-pip ${statusForNode(selectedNode, activeNode, completedNodes, run?.status === 'blocked')}`} />{statusForNode(selectedNode, activeNode, completedNodes, run?.status === 'blocked')}</div></InspectorField>
             <InspectorField label="Configuration"><div className="config-row"><span>Input schema</span><strong>validated</strong></div><div className="config-row"><span>Policy</span><strong>v0.1</strong></div><div className="config-row"><span>Deadline</span><strong>60s</strong></div></InspectorField>
-            <div className="inspector-bottom"><button className="full-button"><Settings2 size={14} /> Edit node</button><button className="full-button ghost" onClick={() => void testSelectedNode()} disabled={testingNode}><Send size={14} /> {testingNode ? 'Testing…' : 'Test step'}</button></div>
+            <InspectorField label={`Connections · ${incomingEdges.length + outgoingEdges.length}`}>
+              <div className="connections-list">
+                {incomingEdges.map(([from, to]) => <div className="connection-row" key={`${from}-${to}`}>
+                  <span className="connection-direction input">in</span>
+                  <span className="connection-label">{nodeById[from]?.label || from}</span>
+                  <button className="connection-remove" title="Remover conexão" onClick={() => removeEdge(from, to)}><X size={12} /></button>
+                </div>)}
+                {outgoingEdges.map(([from, to]) => <div className="connection-row" key={`${from}-${to}`}>
+                  <span className="connection-direction output">out</span>
+                  <span className="connection-label">{nodeById[to]?.label || to}</span>
+                  <button className="connection-remove" title="Remover conexão" onClick={() => removeEdge(from, to)}><X size={12} /></button>
+                </div>)}
+                {!incomingEdges.length && !outgoingEdges.length && <span className="no-connections">Nenhuma conexão neste componente.</span>}
+              </div>
+            </InspectorField>
+            <div className="inspector-bottom"><button className="full-button" onClick={() => startConnectionFrom(selectedNode)}><GitBranch size={14} /> Conectar a partir daqui</button><button className="full-button ghost" onClick={() => void testSelectedNode()} disabled={testingNode}><Send size={14} /> {testingNode ? 'Testando…' : 'Testar etapa'}</button><button className="full-button danger" onClick={() => removeNode(selectedNode)} disabled={selectedNode === 'intake' || loading}><Trash2 size={14} /> Remover do fluxo</button></div>
           </>}
           {rightTab === 'data' && <DataPanel result={result} mode={mode} />}
           {rightTab === 'logs' && <LogsPanel events={events} />}
