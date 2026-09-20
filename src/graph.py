@@ -1,5 +1,12 @@
 from .intake import intake_document
-from .nodes import assess_demand, create_research_plan, finalize, normalize_demand, research
+from .nodes import (
+    assess_demand,
+    create_research_plan,
+    debate_analysis,
+    finalize,
+    normalize_demand,
+    research,
+)
 from .schemas import ResearchState
 
 try:
@@ -12,7 +19,15 @@ class FallbackGraph:
     """Executor de contingência: preserva nós e estado enquanto LangGraph não instala."""
 
     def invoke(self, state: ResearchState) -> ResearchState:
-        for node in (intake_document, normalize_demand, create_research_plan, research, assess_demand, finalize):
+        for node in (
+            intake_document,
+            normalize_demand,
+            create_research_plan,
+            research,
+            assess_demand,
+            debate_analysis,
+            finalize,
+        ):
             state.update(node(state))
         return state
 
@@ -26,12 +41,15 @@ def build_graph():
     graph.add_node("create_research_plan", create_research_plan)
     graph.add_node("research", research)
     graph.add_node("assess_demand", assess_demand)
+    graph.add_node("debate_analysis", debate_analysis)
     graph.add_node("finalize", finalize)
     graph.add_edge(START, "intake_document")
     graph.add_edge("intake_document", "normalize_demand")
     graph.add_edge("normalize_demand", "create_research_plan")
     graph.add_edge("create_research_plan", "research")
     graph.add_edge("research", "assess_demand")
-    graph.add_edge("assess_demand", "finalize")
+    graph.add_edge("assess_demand", "debate_analysis")
+    graph.add_edge("debate_analysis", "finalize")
     graph.add_edge("finalize", END)
     return graph.compile()
+

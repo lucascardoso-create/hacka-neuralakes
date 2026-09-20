@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .analysis_agent import AnalysisAgent
+from .debate_agent import DebateAgent
 from .orchestrator import OrchestratorAgent
 from .research_agent import ResearchAgent
 from .schemas import AuditEvent, DemandAssessment, ResearchPlan, ResearchState, StructuredDemand
@@ -75,3 +76,35 @@ def assess_demand(state: ResearchState) -> dict:
         "assessment": assessment.model_dump(),
         "audit": _audit(state, "assess_demand", message),
     }
+
+
+# --- NÓS DO DEBATE MULTI-AGENTE (A2A) ---
+
+def debate_analysis(state: ResearchState) -> dict:
+    """Nó de Debate Jurídico Multi-Agente (A2A): diálogo entre Defensor e Auditor de Riscos."""
+    assessment_dict = state.get("assessment", {})
+    if not assessment_dict:
+        return {}
+
+    agent = DebateAgent()
+    comparisons = assessment_dict.get("comparisons", [])
+    report_md = assessment_dict.get("report_markdown", "")
+
+    turns, updated_report = agent.conduct_debate(
+        original_demand=state.get("original_demand", ""),
+        comparisons=comparisons,
+        current_report=report_md,
+    )
+
+    assessment_dict["debate"] = [t.model_dump() for t in turns]
+    assessment_dict["report_markdown"] = updated_report
+
+    return {
+        "assessment": assessment_dict,
+        "audit": _audit(
+            state,
+            "debate_analysis",
+            "Debate dialético multi-agente (A2A) realizado com sucesso entre Dra. Helena e Dr. Marcos",
+        ),
+    }
+

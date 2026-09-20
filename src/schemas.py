@@ -65,6 +65,12 @@ class EvidenceComparison(BaseModel):
     excerpts: list[str] = Field(default_factory=list, max_length=3)
 
 
+class DebateTurn(BaseModel):
+    role: Literal["advocate", "risk_auditor", "synthesis"]
+    speaker_name: str
+    argument: str
+
+
 class DemandAssessment(BaseModel):
     """Saída experimental; requer revisão jurídica humana."""
 
@@ -73,6 +79,7 @@ class DemandAssessment(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
     evidence_summary: list[str] = Field(default_factory=list)
     comparisons: list[EvidenceComparison] = Field(default_factory=list)
+    debate: list[DebateTurn] = Field(default_factory=list)
     methodology: str = ""
     report_markdown: str = ""
     limitations: list[str] = Field(default_factory=list)

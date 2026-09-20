@@ -8,8 +8,11 @@ from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Any
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+try:
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+except ImportError:
+    ClientSession = StdioServerParameters = stdio_client = None  # type: ignore
 
 
 class McpDriveError(RuntimeError):
@@ -20,6 +23,8 @@ class McpDriveClient:
     """Cliente síncrono mínimo para o servidor tools-mcp-drive via stdio."""
 
     def __init__(self, server_dir: str | Path, data_dir: str | Path = "data") -> None:
+        if ClientSession is None:
+            raise McpDriveError("Pacote 'mcp' não instalado. Instale via 'pip install mcp'.")
         self.server_dir = Path(server_dir).expanduser().resolve()
         self.data_dir = Path(data_dir).expanduser().resolve()
         if not self.server_dir.is_dir():
