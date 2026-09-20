@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Data and SQLite
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Cloned helper repositories
+antigravity-awesome-skills/
+
+# IDE & OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

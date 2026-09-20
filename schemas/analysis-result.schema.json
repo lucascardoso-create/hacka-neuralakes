@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Instanke AnalysisResult v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "mode", "synthetic", "calibration_status", "represented_side", "success_definition", "target_stage", "as_of_date", "scope", "repetitividade", "exito", "abstention_reasons", "evidence_ids", "policy_version", "review_required"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "mode": {"enum": ["fixture", "replay", "live"]},
+    "synthetic": {"type": "boolean"},
+    "calibration_status": {"enum": ["not_validated", "validated_for_cohort"]},
+    "represented_side": {"type": "string", "minLength": 1},
+    "success_definition": {"type": "string", "minLength": 1},
+    "target_stage": {"type": "string", "minLength": 1},
+    "as_of_date": {"type": "string", "format": "date"},
+    "scope": {"enum": ["judge", "division", "tribunal", "analogous", "unknown"]},
+    "repetitividade": {
+      "type": "object", "additionalProperties": false, "required": ["probability", "label"],
+      "properties": {"probability": {"$ref": "#/$defs/probability"}, "label": {"enum": ["sim", "nao", "inconclusivo"]}}
+    },
+    "exito": {"type": "object", "additionalProperties": false, "required": ["probability"], "properties": {"probability": {"$ref": "#/$defs/probability"}}},
+    "abstention_reasons": {"type": "array", "items": {"type": "string"}},
+    "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "policy_version": {"type": "string"},
+    "review_required": {"const": true}
+  },
+  "$defs": {"probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1}},
+  "allOf": [
+    {
+      "if": {"properties": {"abstention_reasons": {"minItems": 1}}},
+      "then": {"properties": {
+        "repetitividade": {"properties": {"probability": {"type": "null"}, "label": {"const": "inconclusivo"}}},
+        "exito": {"properties": {"probability": {"type": "null"}}}
+      }},
+      "else": {"properties": {
+        "repetitividade": {"properties": {"probability": {"type": "number"}}},
+        "exito": {"properties": {"probability": {"type": "number"}}}
+      }}
+    },
+    {"if": {"properties": {"mode": {"const": "fixture"}}}, "then": {"properties": {"synthetic": {"const": true}}}}
+  ]
+}
