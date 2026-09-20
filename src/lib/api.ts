@@ -52,6 +52,13 @@ export type AnalysisResult = {
   evidence_ids?: string[]
   calibration_status?: string
   provenance?: Record<string, unknown>
+  analysis?: {
+    synthetic: boolean
+    demand: string
+    methodology: string
+    comparisons: Array<{ id: string; score: number; result: string; reason: string }>
+    conclusion: string
+  }
 }
 
 export type Connector = {
