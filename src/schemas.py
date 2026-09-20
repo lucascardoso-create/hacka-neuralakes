@@ -38,6 +38,8 @@ class DownloadedDocument(BaseModel):
 class AuditEvent(BaseModel):
     node: str
     message: str
+    timestamp: str = ""
+    duration_ms: float | None = None
 
 
 class RepetitivenessAssessment(BaseModel):

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório Completo de Execução, Telemetria e Auditoria Ponta a Ponta</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.6cm 1.4cm 1.6cm 1.4cm;
+    }
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.5;
+      font-size: 13px;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+    .header-card {
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-success {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    .badge-node {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 6px 0;
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      font-size: 12px;
+      color: #475569;
+      margin-top: 10px;
+    }
+    .meta-item strong {
+      color: #0f172a;
+    }
+    h2 {
+      font-size: 15px;
+      color: #1e3a8a;
+      border-left: 4px solid #3b82f6;
+      padding-left: 8px;
+      margin: 20px 0 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 11.5px;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+      color: #334155;
+    }
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+    .total-row td {
+      background-color: #e0e7ff !important;
+      font-weight: 700;
+      color: #1e1b4b;
+    }
+    .quote-box {
+      border-left: 4px solid #94a3b8;
+      background: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0;
+      font-style: normal;
+    }
+    .quote-advocate {
+      border-left-color: #3b82f6;
+      background: #eff6ff;
+    }
+    .quote-auditor {
+      border-left-color: #ef4444;
+      background: #fef2f2;
+    }
+    .quote-consensus {
+      border-left-color: #10b981;
+      background: #f0fdf4;
+    }
+    .speaker-title {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .advocate-title { color: #1d4ed8; }
+    .auditor-title { color: #b91c1c; }
+    .consensus-title { color: #047857; }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 8px 0;
+      background: #fff;
+    }
+    .card-header {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #0f172a;
+    }
+    ul, ol {
+      margin: 6px 0;
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 3px;
+    }
+    .footer {
+      margin-top: 24px;
+      padding-top: 10px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 10.5px;
+      color: #64748b;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h1>Relatório Completo de Execução, Telemetria e Auditoria</h1>
+        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Pipeline Multi-Agente Jurídico com LangGraph & Coleta TJSP</div>
+      </div>
+      <span class="badge badge-success">Status: Concluído (100% OK)</span>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-item"><strong>Run ID:</strong> <code>8cb9c37c-f409-4621-ab55-40ab4351deb2</code></div>
+      <div class="meta-item"><strong>Data / Horário (UTC):</strong> 2026-09-20T15:49:15Z</div>
+      <div class="meta-item"><strong>Arquitetura:</strong> Orquestrador + Pesquisa + Parser + Debate A2A</div>
+      <div class="meta-item"><strong>Duração Total:</strong> ~102,2 segundos (7 nós executados)</div>
+    </div>
+  </div>
+
+  <h2>1. Painel de Telemetria e Latência por Nó</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Nó no Grafo</th>
+        <th>Agente Responsável</th>
+        <th>Duração (ms)</th>
+        <th>Duração (s)</th>
+        <th>Timestamp (UTC)</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge-node">intake_document</span></td>
+        <td>Ingestão / Intake</td>
+        <td>1,20 ms</td>
+        <td>&lt; 0,01 s</td>
+        <td>2026-09-20T15:47:33Z</td>
+        <td><span class="badge badge-success">OK</span></td>
+      </tr>
+      <tr>
+        <td><span class="badge-node">orchestrator_normalize</span></td>
+        <td>Agente Orquestrador</td>
+        <td>16.997,82 ms</td>
+        <td>~17,0 s</td>
+        <td>2026-09-20T15:47:50Z</td>
+        <td><span class="badge badge-success">OK</span></td>
+      </tr>
+      <tr>
+        <td><span class="badge-node">create_research_plan</span></td>
+        <td>Agente de Pesquisa</td>
+        <td>12.297,15 ms</td>
+        <td>~12,3 s</td>
+        <td>2026-09-20T15:48:02Z</td>
+        <td><span class="badge badge-success">OK</span></td>
+      </tr>
+      <tr>
+        <td><span class="badge-node">research</span></td>
+        <td>Agente de Pesquisa</td>
+        <td>14,47 ms</td>
+        <td>&lt; 0,02 s</td>
+        <td>2026-09-20T15:48:02Z</td>
+        <td><span class="badge badge-success">OK</span></td>
+      </tr>
+      <tr>
+        <td><span class="badge-node">assess_demand</span></td>
+        <td>Agente de Análise + Parser</td>
+        <td>35.210,99 ms</td>
+        <td>~35,2 s</td>
+        <td>2026-09-20T15:48:37Z</td>
+        <td><span class="badge badge-success">OK</span></td>
+      </tr>
+      <tr>
+        <td><span class="badge-node">debate_analysis</span></td>
+        <td>Agentes Dialéticos (A2A)</td>
+        <td>37.701,52 ms</td>
+        <td>~37,7 s</td>
+        <td>2026-09-20T15:49:15Z</td>
+        <td><span class="badge badge-success">OK</span></td>
+      </tr>
+      <tr>
+        <td><span class="badge-node">finalize</span></td>
+        <td>Agente Orquestrador</td>
+        <td>0,01 ms</td>
+        <td>&lt; 0,01 s</td>
+        <td>2026-09-20T15:49:15Z</td>
+        <td><span class="badge badge-success">OK</span></td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2">TEMPO TOTAL CONSOLIDADO DO PIPELINE</td>
+        <td>102.223,16 ms</td>
+        <td>~102,2 s</td>
+        <td>—</td>
+        <td><span class="badge badge-success">100% OK</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Entrada e Normalização da Demanda</h2>
+  <div class="card">
+    <div class="card-header">Demanda Original:</div>
+    <div style="font-size: 12px; color: #334155;">
+      "Consumidora aposentada relata descontos mensais não autorizados em benefício previdenciário por associação. Os pedidos demonstrativos são: declaração de inexistência de relação jurídica, cessação dos descontos, restituição simples do indébito e indenização por dano moral."
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">Estratégia de Pesquisa Gerada (TJSP):</div>
+    <div><strong>Query Otimizada:</strong> <code>descontos mensais não autorizados em benefício previdenciário por associação</code></div>
+    <div><strong>Critérios de Busca:</strong> descontos mensais, benefício previdenciário, associação | <strong>Limite:</strong> 3 sentenças</div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <h2>3. Documentos Judiciais Coletados e Análise com Parser (Art. 489 CPC)</h2>
+  
+  <div class="card">
+    <div class="card-header">1. Processo 1023372-41.2022.8.26.0405 (8ª Vara Cível - Foro de Osasco)</div>
+    <div><strong>Juiz:</strong> ANTONIO MARCELO CUNZOLO RIMOLA | <strong>SHA256:</strong> <code>67276b94c634...</code></div>
+    <div><strong>Similaridade:</strong> 0% (Fatos: 0.0, Teses: 0.0) — <span style="color: #dc2626; font-weight: 600;">Inaplicável / Distinguishing</span></div>
+    <div style="font-size: 11.5px; color: #475569; margin-top: 3px;">
+      <strong>Diferença Material:</strong> Ação de cobrança de empréstimo pessoal (Banco Bradesco S.A.). Sem relação fática com descontos previdenciários.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">2. Processo 1002937-34.2022.8.26.0506 (5ª Vara Cível - Foro de Ribeirão Preto)</div>
+    <div><strong>Juiz:</strong> ANTONIO MARCELO CUNZOLO RIMOLA | <strong>SHA256:</strong> <code>f5dc345cd7b3...</code></div>
+    <div><strong>Similaridade:</strong> 0% (Fatos: 0.0, Teses: 0.0) — <span style="color: #dc2626; font-weight: 600;">Inaplicável / Distinguishing</span></div>
+    <div style="font-size: 11.5px; color: #475569; margin-top: 3px;">
+      <strong>Diferença Material:</strong> Execução hipotecária extinta por quitação integral. Matéria estranha à inicial.
+    </div>
+  </div>
+
+  <div class="card" style="border-left: 4px solid #16a34a; background: #f0fdf4;">
+    <div class="card-header" style="color: #15803d;">3. Processo 0013922-19.2007.8.26.0405 (5ª Vara Cível - Foro de Osasco)</div>
+    <div><strong>Juiz:</strong> ANTONIO MARCELO CUNZOLO RIMOLA | <strong>SHA256:</strong> <code>7f6022536d8c...</code></div>
+    <div><strong>Similaridade:</strong> <strong>100% (Fatos: 1.0, Teses: 1.0, Pedidos: 1.0)</strong> — <span style="color: #16a34a; font-weight: 700;">FAVORÁVEL (Procedente em parte)</span></div>
+    <div style="font-size: 11.5px; color: #166534; margin-top: 3px;">
+      <strong>Fundamentação Extraída:</strong> A sentença declara a inexistência do débito e condena expressamente a ré a restituir os valores indevidamente descontados.
+    </div>
+  </div>
+
+  <h2>4. Debate Dialético Multi-Agente (A2A) e Análise de Riscos</h2>
+
+  <div class="quote-box quote-advocate">
+    <div class="speaker-title advocate-title">💬 Sustentação da Tese — Dra. Helena (Advogada da Causa / Defensora)</div>
+    <div>
+      "A presente demanda apresenta claros elementos que justificam o ajuizamento da ação. A consumidora aposentada relata descontos mensais não autorizados em seu benefício previdenciário por associação, o que configura uma prática abusiva e passível de tutela jurisdicional. Precedentes como o de nº 0013922-19.2007.8.26.0405 demonstram a possibilidade de sucesso em demandas semelhantes, onde o tribunal declarou a inexistência do débito e condenou a ré a restituir os valores descontados. Além disso, a proteção consumerista e a tutela cabível para idosos são aspectos que reforçam a viabilidade da ação."
+    </div>
+  </div>
+
+  <div class="quote-box quote-auditor">
+    <div class="speaker-title auditor-title">⚠️ Análise de Riscos & Distinguishing — Dr. Marcos (Auditor Cético de Riscos)</div>
+    <div>
+      "Embora a causa seja sedutora do ponto de vista da proteção ao consumidor, é crucial examinar os precedentes de forma crítica. Os casos apresentados pela Dra. Helena não são totalmente alinhados com a demanda em questão, apresentando diferenças materiais significativas. Além disso, os precedentes desfavoráveis demonstram que o judiciário pode não considerar a matéria da demanda da autora como objeto de julgamento. Há um risco real de distinguishing e de sucumbência, especialmente considerando a complexidade das relações contratuais e a necessidade de prova da não autorização dos descontos. A indenização por dano moral também é um ponto de alto risco."
+    </div>
+  </div>
+
+  <div class="quote-box quote-consensus">
+    <div class="speaker-title consensus-title">⚖️ Parecer Estratégico Consensual — Síntese Multi-Agente</div>
+    <div>
+      "Recomendável ajuizar a ação com postura mitigadora de riscos: (i) petição inicial robusta com destaque para a proteção consumerista e a ilegalidade dos descontos; (ii) juntada imediata dos extratos bancários do INSS e comprovantes de não filiação; (iii) priorização da tutela de urgência para cessação imediata dos débitos e restituição simples do indébito; e (iv) formulação do pedido de dano moral com clareza probatória sobre o abalo concreto para afastar riscos sucumbenciais."
+    </div>
+  </div>
+
+  <div class="footer">
+    Sistema Multi-Agente Jurídico • Relatório gerado automaticamente para auditoria e governança legal • Hash de Integridade Verificado
+  </div>
+
+</body>
+</html>
