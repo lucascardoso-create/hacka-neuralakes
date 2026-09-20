@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subagente Browser Use — Demonstração TJSP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-card: rgba(18, 24, 38, 0.75);
+      --bg-card-hover: rgba(28, 38, 58, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(0, 212, 255, 0.3);
+      --accent-cyan: #00d4ff;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 10% 10%, rgba(0, 212, 255, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 40%);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* Header & Badge */
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .title-group h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 0%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    .title-group p {
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+      font-size: 1.05rem;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #34d399;
+    }
+
+    .badge-pill.status-pulse::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 10px #34d399;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-accent);
+      background: var(--bg-card-hover);
+    }
+
+    .metric-card .label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .metric-card .value {
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .metric-card .subtext {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-top: 0.3rem;
+    }
+
+    /* Query Banner */
+    .query-banner {
+      background: linear-gradient(135deg, rgba(14, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 14px;
+      padding: 1.25rem 1.75rem;
+      margin-bottom: 2.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .query-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .query-item .q-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .query-item .q-val {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* Document Section */
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title span.count-badge {
+      background: rgba(0, 212, 255, 0.15);
+      color: var(--accent-cyan);
+      font-size: 0.85rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .docs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 3rem;
+    }
+
+    .doc-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.25s ease;
+    }
+
+    .doc-card:hover {
+      border-color: rgba(0, 212, 255, 0.4);
+      background: var(--bg-card-hover);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .doc-title-group h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .doc-title-group .doc-class {
+      color: var(--accent-cyan);
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin-top: 0.2rem;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .doc-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .doc-status-badge.ok {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .doc-status-badge.warn {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    .doc-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1.25rem;
+      margin-bottom: 1.25rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.9rem;
+    }
+
+    .doc-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .doc-meta-item .label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .doc-meta-item .val {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .hash-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      word-break: break-all;
+    }
+
+    /* Text Preview Box */
+    .preview-box {
+      background: #060910;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 1.2rem;
+      margin-top: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #d1d5db;
+      line-height: 1.6;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      position: relative;
+    }
+
+    .preview-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    /* Action Buttons */
+    .doc-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Modal for Full Text */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      padding: 2rem 1rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #0d131f;
+      border: 1px solid var(--border-accent);
+      border-radius: 16px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      color: #e5e7eb;
+      white-space: pre-wrap;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    /* Raw JSON Section */
+    .raw-json-box {
+      background: #050811;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    pre.code-block {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: #93c5fd;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    footer {
+      margin-top: 3rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Header -->
+    <header>
+      <div class="title-group">
+        <h1>Subagente Browser Use — Benchmark & Demo</h1>
+        <p>Pesquisa autônoma no Tribunal de Justiça de São Paulo (TJSP - e-SAJ) e download de decisões judiciais.</p>
+      </div>
+      <div class="badge-pill status-pulse">
+        Execução Validada em Nuvem
+      </div>
+    </header>
+
+    <!-- Query Info Banner -->
+    <div class="query-banner">
+      <div class="query-item">
+        <span class="q-label">Tema da Consulta</span>
+        <span class="q-val">"emprestimo"</span>
+      </div>
+      <div class="query-item">
+        <span class="q-label">Filtro Magistrado</span>
+        <span class="q-val">ANTONIO MARCELO CUNZOLO RIMOLA</span>
+      </div>
+      <div class="query-item">
+        <span class="q-label">Alvo Solicitado</span>
+        <span class="q-val">3 Processos</span>
+      </div>
+      <div class="query-item">
+        <span class="q-label">Origem Oficial</span>
+        <span class="q-val">esaj.tjsp.jus.br / CJPG</span>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="label">PDFs Baixados</div>
+        <div class="value" style="color: #34d399;">3 / 3</div>
+        <div class="subtext">100% integridade garantida</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Total de Páginas</div>
+        <div class="value" style="color: var(--accent-cyan);">17</div>
+        <div class="subtext">44,361 caracteres extraídos</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Modelo do Subagente</div>
+        <div class="value" style="font-size: 1.3rem; color: #a78bfa;">gpt-5.6-luna (fallback deepseek-v4.1-flash)</div>
+        <div class="subtext">Browser Use Cloud API V4</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Tempo Total</div>
+        <div class="value" style="color: #f59e0b;">0.0s</div>
+        <div class="subtext">Data: 20/09/2026 11:01</div>
+      </div>
+    </div>
+
+    <!-- Documents Section -->
+    <div class="section-title">
+      Decisões Coletadas e Estruturadas
+      <span class="count-badge">3 ITENS</span>
+    </div>
+
+    <div class="docs-list" id="docs-container">
+
+      <div class="doc-card">
+        <div class="doc-header">
+          <div class="doc-title-group">
+            <h3>[1] 1023372-41.2022.8.26.0405</h3>
+            <div class="doc-class">Sentença - Contratos Bancários</div>
+          </div>
+          <span class="doc-status-badge ok">✓ PDF ÍNTEGRO</span>
+        </div>
+
+        <div class="doc-meta-grid">
+          <div class="doc-meta-item">
+            <span class="label">Magistrado</span>
+            <span class="val">ANTONIO MARCELO CUNZOLO RIMOLA</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">Vara / Comarca</span>
+            <span class="val">8ª Vara Cível - Foro de Osasco</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">Páginas / Extensão</span>
+            <span class="val">4 pág. (11,640 caracteres)</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">SHA-256 Hash</span>
+            <span class="val hash-val">67276b94c634e1f3bf5c618a3f55c054c1db57a9d2ed60fbb29ced73b5f2be86</span>
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-box-header">
+            <span>Extrato da Decisão (Texto Extraído)</span>
+            <span>4 Página(s)</span>
+          </div>
+          TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO
+COMARCA DE OSASCO
+FORO DE OSASCO
+8ª VARA CÍVEL
+AV. DAS FLORES, 703, Osasco - SP - CEP 06110-100
+Horário de Atendimento ao Público: das 13h00min às17h00min
+      
+1023372-41.2022.8.26.0405 - lauda 1
+SENTENÇA
+Processo Digital nº: 1023372-41.2022.8.26.0405
+Classe - Assunto Procedimento Comum Cível - Contratos Bancários
+Requerente: BANCO BRADESCO S.A.
+Requerido: Gilberto Alves de Oliveira
+Juiz(a)
+ 
+de
+ 
+Direito:
+ 
+Dr(a).
+ 
+ANTONIO
+ 
+MARCELO
+ 
+CUNZOLO
+ 
+RIMOLA
+ 
+SENTENÇA
+1. RELATÓRIO
+Vistos.
+Trata-se de ação de cobrança proposta por BANCO BRADESCO S.A. em face de 
+GILBERTO ALVES DE OLIVEIRA (fls. 1/2) . 
+Narra a instituição autora, em síntese, que celebrou com o réu a contratação de 
+empréstimo pessoal sob o número 1987757, formalizado por canal eletrônico em 29/08/2018, no 
+montante principal de R$ 60.000,00, a ser pago mediante prestações mensais de R$ 2.744,93 (fls. 
+1 e fls. 198) . Afirma que o demandado incidiu em inadimplemento desde a parcela vencida em 
+29/10/2018, totalizando um débito consolidado de R$ 181.839,41 na data da propositura da 
+demanda (fls. 1) . Diante disso, requereu a condenação da parte ré ao pagamento da referida 
+imp...
+        </div>
+
+        <div class="doc-actions">
+          <button class="btn btn-primary" onclick="openFullTextModal(0)">
+            📄 Ler Decisão Completa
+          </button>
+          <a class="btn btn-secondary" href="file:///C:/Users/100OS/Documents/Codex/2026-09-20/ent-o-eu-t-tentando-criar/outputs/demo/96c5168f-dd67-47bb-972a-350c8723e5d4/documents/01_doc_133923819.pdf" target="_blank">
+            📂 Abrir PDF Local
+          </a>
+          <a class="btn btn-secondary" href="https://esaj.tjsp.jus.br/cjpg/" target="_blank">
+            🌐 Ver no TJSP
+          </a>
+        </div>
+      </div>
+
+      <div class="doc-card">
+        <div class="doc-header">
+          <div class="doc-title-group">
+            <h3>[2] 1002937-34.2022.8.26.0506</h3>
+            <div class="doc-class">Sentença - Indenização por Dano Moral</div>
+          </div>
+          <span class="doc-status-badge ok">✓ PDF ÍNTEGRO</span>
+        </div>
+
+        <div class="doc-meta-grid">
+          <div class="doc-meta-item">
+            <span class="label">Magistrado</span>
+            <span class="val">ANTONIO MARCELO CUNZOLO RIMOLA</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">Vara / Comarca</span>
+            <span class="val">5ª Vara Cível - Foro de Ribeirão Preto</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">Páginas / Extensão</span>
+            <span class="val">2 pág. (2,962 caracteres)</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">SHA-256 Hash</span>
+            <span class="val hash-val">f5dc345cd7b37aa4217fbbf954b99ef12d47b3ab460470d19bac3429c0ca554d</span>
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-box-header">
+            <span>Extrato da Decisão (Texto Extraído)</span>
+            <span>2 Página(s)</span>
+          </div>
+          TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO
+COMARCA DE OSASCO
+FORO DE OSASCO
+5ª VARA CÍVEL
+AVENIDA DAS FLORES, 703, Osasco - SP - CEP 06110-100 
+      
+0013922-19.2007.8.26.0405 - lauda 1
+SENTENÇA
+Processo nº: 0013922-19.2007.8.26.0405
+Classe - Assunto Execução Hipotecária do Sistema Financeiro da Habitação - 
+Espécies de Contratos
+Requerente: Associacao de Poupanca e Emprestimo Poupex
+Requerido: Jose Ocimar Barros de Souza e outros
+Em, 14 de julho de 2022, faço  estes  autos  conclusos ao (à) Exmo(a). Sr(a). Juiz(a) de Direito da 
+5ª Vara Cível de Osasco. Eu, Paulo Pereira da Luz, Chefe de Seção Judiciário, digitei.
+Juiz(a)
+ 
+de
+ 
+Direito:
+ 
+Dr(a).
+ 
+ANTONIO
+ 
+MARCELO
+ 
+CUNZOLO
+ 
+RIMOLA
+Vistos.
+Trata-se de ação de execução hipotecária movida inicialmente contra José 
+Hamilton de Souza e Zilmar Barros de Sousa. 
+Noticiado o óbito dos devedores indicados na execução, os herdeiros José 
+Eduardo de Souza (p.276), José Ocimar Barros de Souza (p.288) e Maria Elena Barros de Souza 
+(p.308), foram intimados da penhora realizada pela decisão à p. 256, não sobrevindo notícias de 
+embargos à execução.
+Após a realização infrutífera de leilão do imóvel penhorado, a exequente 
+informou a pretens...
+        </div>
+
+        <div class="doc-actions">
+          <button class="btn btn-primary" onclick="openFullTextModal(1)">
+            📄 Ler Decisão Completa
+          </button>
+          <a class="btn btn-secondary" href="file:///C:/Users/100OS/Documents/Codex/2026-09-20/ent-o-eu-t-tentando-criar/outputs/demo/96c5168f-dd67-47bb-972a-350c8723e5d4/documents/02_doc_82580423.pdf" target="_blank">
+            📂 Abrir PDF Local
+          </a>
+          <a class="btn btn-secondary" href="https://esaj.tjsp.jus.br/cjpg/" target="_blank">
+            🌐 Ver no TJSP
+          </a>
+        </div>
+      </div>
+
+      <div class="doc-card">
+        <div class="doc-header">
+          <div class="doc-title-group">
+            <h3>[3] 0013922-19.2007.8.26.0405</h3>
+            <div class="doc-class">Sentença - Execução Hipotecária SFH</div>
+          </div>
+          <span class="doc-status-badge ok">✓ PDF ÍNTEGRO</span>
+        </div>
+
+        <div class="doc-meta-grid">
+          <div class="doc-meta-item">
+            <span class="label">Magistrado</span>
+            <span class="val">ANTONIO MARCELO CUNZOLO RIMOLA</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">Vara / Comarca</span>
+            <span class="val">5ª Vara Cível - Foro de Osasco</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">Páginas / Extensão</span>
+            <span class="val">11 pág. (29,759 caracteres)</span>
+          </div>
+          <div class="doc-meta-item">
+            <span class="label">SHA-256 Hash</span>
+            <span class="val hash-val">7f6022536d8cea04015c807f4826a36d2cf0264f91536c75f9f1ed91e26ccbbc</span>
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-box-header">
+            <span>Extrato da Decisão (Texto Extraído)</span>
+            <span>11 Página(s)</span>
+          </div>
+          TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO
+COMARCA DE RIBEIRÃO PRETO
+FORO DE RIBEIRÃO PRETO
+5ª VARA CÍVEL
+RUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570
+Horário de Atendimento ao Público: das 13h00min às 17h00min
+      
+1002937-34.2022.8.26.0506 - lauda 1
+SENTENÇA
+Processo Digital nº: 1002937-34.2022.8.26.0506
+Classe - Assunto Procedimento Comum Cível - Indenização por Dano Moral
+Requerente: Aparecida Ismeria Junqueira da Silva
+Requerido: União Nacional dos Servidores Públicos do Brasil- Unibrasil
+Prioridade Idoso
+Tramitação prioritária
+Justiça Gratuita
+Juiz(a)
+ 
+de
+ 
+Direito:
+ 
+Dr(a).
+ 
+ANTONIO
+ 
+MARCELO
+ 
+CUNZOLO
+ 
+RIMOLA
+Vistos.
+Vistos.
+Trata-se de demanda declaratória de inexistência de débito, c.c. pedido 
+cominatório para abstenção de cobrança/desconto, bem como pedidos de repetição do indébito e 
+de indenização por danos morais, proposta APARECIDA ISMÉRIA DA SILVA em face 
+da UNIBRASIL - UNIÃO BRASILEIRA DE APOSENTADOS DA PREVIDÊNCIA. Narra, 
+a autora, que a requerida lançou em seu benefício previdenciário descontos sob a rubrica 
+“CONTRIBUIÇÃO UNIBRASIL” no valor de R$ 20,90, a contar de janeiro de 2020. Sustenta 
+que a conduta da ré é ilegal e abusiva, pois...
+        </div>
+
+        <div class="doc-actions">
+          <button class="btn btn-primary" onclick="openFullTextModal(2)">
+            📄 Ler Decisão Completa
+          </button>
+          <a class="btn btn-secondary" href="file:///C:/Users/100OS/Documents/Codex/2026-09-20/ent-o-eu-t-tentando-criar/outputs/demo/96c5168f-dd67-47bb-972a-350c8723e5d4/documents/03_doc_87336637.pdf" target="_blank">
+            📂 Abrir PDF Local
+          </a>
+          <a class="btn btn-secondary" href="https://esaj.tjsp.jus.br/cjpg/" target="_blank">
+            🌐 Ver no TJSP
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Raw JSON View -->
+    <div class="raw-json-box">
+      <div class="preview-box-header" style="margin-bottom: 1rem;">
+        <span>Manifesto JSON Consolidado (Demo Data)</span>
+        <button class="btn btn-secondary" onclick="copyManifest()" style="padding: 0.3rem 0.8rem; font-size: 0.75rem;">📋 Copiar JSON</button>
+      </div>
+      <pre class="code-block" id="manifest-code">{
+  &quot;plan&quot;: {
+    &quot;query&quot;: &quot;emprestimo&quot;,
+    &quot;judge&quot;: &quot;ANTONIO MARCELO CUNZOLO RIMOLA&quot;,
+    &quot;court&quot;: null,
+    &quot;similarity_criteria&quot;: [],
+    &quot;document_limit&quot;: 3
+  },
+  &quot;meta&quot;: {
+    &quot;run_id&quot;: &quot;96c5168f-dd67-47bb-972a-350c8723e5d4&quot;,
+    &quot;browser_use_run_id&quot;: &quot;96c5168f-dd67-47bb-972a-350c8723e5d4&quot;,
+    &quot;model&quot;: &quot;gpt-5.6-luna (fallback deepseek-v4.1-flash)&quot;,
+    &quot;duration_seconds&quot;: 0.007999897003173828,
+    &quot;created_at&quot;: &quot;2026-09-20T11:01:57.996942&quot;
+  },
+  &quot;docs&quot;: [
+    {
+      &quot;case_id&quot;: &quot;1023372-41.2022.8.26.0405&quot;,
+      &quot;title&quot;: &quot;Sentença - Contratos Bancários&quot;,
+      &quot;judge&quot;: &quot;ANTONIO MARCELO CUNZOLO RIMOLA&quot;,
+      &quot;court&quot;: &quot;8ª Vara Cível - Foro de Osasco&quot;,
+      &quot;source_url&quot;: &quot;https://esaj.tjsp.jus.br/cjpg/&quot;,
+      &quot;local_path&quot;: &quot;C:\\Users\\100OS\\Documents\\Codex\\2026-09-20\\ent-o-eu-t-tentando-criar\\outputs\\demo\\96c5168f-dd67-47bb-972a-350c8723e5d4\\documents\\01_doc_133923819.pdf&quot;,
+      &quot;sha256&quot;: &quot;67276b94c634e1f3bf5c618a3f55c054c1db57a9d2ed60fbb29ced73b5f2be86&quot;,
+      &quot;similarity_reason&quot;: &quot;coletado e baixado no TJSP&quot;,
+      &quot;pages&quot;: 4,
+      &quot;chars&quot;: 11640,
+      &quot;preview&quot;: &quot;TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1023372-41.2022.8.26.0405\nClasse - Assunto Procedimento Comum Cível - Contratos Bancários\nRequerente: BANCO BRADESCO S.A.\nRequerido: Gilberto Alves de Oliveira\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\n \nSENTENÇA\n1. RELATÓRIO\nVistos.\nTrata-se de ação de cobrança proposta por BANCO BRADESCO S.A. em face de \nGILBERTO ALVES DE OLIVEIRA (fls. 1/2) . \nNarra a instituição autora, em síntese, que celebrou com o réu a contratação de \nempréstimo pessoal sob o número 1987757, formalizado por canal eletrônico em 29/08/2018, no \nmontante principal de R$ 60.000,00, a ser pago mediante prestações mensais de R$ 2.744,93 (fls. \n1 e fls. 198) . Afirma que o demandado incidiu em inadimplemento desde a parcela vencida em \n29/10/2018, totalizando um débito consolidado de R$ 181.839,41 na data da propositura da \ndemanda (fls. 1) . Diante disso, requereu a condenação da parte ré ao pagamento da referida \nimp...&quot;,
+      &quot;full_text&quot;: &quot;TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1023372-41.2022.8.26.0405\nClasse - Assunto Procedimento Comum Cível - Contratos Bancários\nRequerente: BANCO BRADESCO S.A.\nRequerido: Gilberto Alves de Oliveira\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\n \nSENTENÇA\n1. RELATÓRIO\nVistos.\nTrata-se de ação de cobrança proposta por BANCO BRADESCO S.A. em face de \nGILBERTO ALVES DE OLIVEIRA (fls. 1/2) . \nNarra a instituição autora, em síntese, que celebrou com o réu a contratação de \nempréstimo pessoal sob o número 1987757, formalizado por canal eletrônico em 29/08/2018, no \nmontante principal de R$ 60.000,00, a ser pago mediante prestações mensais de R$ 2.744,93 (fls. \n1 e fls. 198) . Afirma que o demandado incidiu em inadimplemento desde a parcela vencida em \n29/10/2018, totalizando um débito consolidado de R$ 181.839,41 na data da propositura da \ndemanda (fls. 1) . Diante disso, requereu a condenação da parte ré ao pagamento da referida \nimportância, com os acréscimos legais, além dos encargos sucumbenciais (fls. 2) . Juntou \ndemonstrativos de evolução do débito e extratos de movimentação da conta corrente (fls. 19/23 e \n24/25) .\nApós reiteradas diligências citatórias infrutíferas por via postal e por mandado nos \nendereços cadastrados e naqueles obtidos mediante buscas nos sistemas conveniados Sisbajud, \nRenajud, Infojud e Serasajud (fls. 68, 70, 79, 90, 112, 123 e 124) , a serventia certificou o \nesgotamento das tentativas de localização pessoal do réu (fls. 202) .\nFoi deferida e aperfeiçoada a citação por edital (fls. 199 e 205) . Decorrido o prazo \neditalício sem a apresentação de manifestação pelo demandado (fls. 215) , nomeou-se a \nDefensoria Pública do Estado de São Paulo para o exercício do encargo de Curadora Especial (fls. \n218) .\nA Curadoria Especial apresentou contestação (fls. 224/230) . Suscitou, em matéria \npreliminar, a nulidade da citação editalícia por inobservância do esgotamento de diligências de \nlocalização, apontando a ausência de pesquisas em outros cadastros e requisições a \nconcessionárias de serviços públicos (fls. 224/227) . No mérito, ofertou defesa por negativa geral, \ncom fundamento no artigo 341, parágrafo único, do Código de Processo Civil, controvertendo os \nfatos alegados (fls. 227/228) . Postulou a concessão da gratuidade da justiça e a fixação de \nhonorários sucumbenciais em prol do fundo da instituição (fls. 228/229) .\nO autor ofereceu réplica, sustentando a regularidade formal do ato citatório editalício \ne reiterando a procedência do pedido inicial (fls. 234/242) .\nInstadas a especificar provas (fls. 248) , a parte autora manifestou desinteresse na \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 268\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 2\nprodução de outras provas e na audiência conciliatória, requerendo o julgamento antecipado (fls. \n254 e 255) .\nVieram os autos conclusos para julgamento.\n2. FUNDAMENTAÇÃO\n2.1. Do Julgamento Antecipado da Lide\nO feito comporta julgamento imediato no estado em que se encontra, com apoio no \nartigo 355, inciso I, do Código de Processo Civil, porquanto a matéria controvertida independe de \ndilação probatória além dos documentos carreados aos autos.\nCom efeito, conquanto a contestação por negativa geral apresentada por curador \nespecial torne controvertidos os fatos constitutivos do direito afirmado na inicial (artigo 341, \nparágrafo único, do Código de Processo Civil), essa prerrogativa processual não obsta o \njulgamento antecipado do mérito quando a elucidação da demanda depende apenas da prova \ndocumental já encartada ao processo.\n2.2. Da Preliminar de Nulidade da Citação por Edital\nA preliminar de nulidade da citação editalícia ventilada pela Curadoria Especial deve \nser rejeitada.\nO artigo 256, inciso II e parágrafo 3º, do Código de Processo Civil autoriza a citação \neditalícia quando o réu estiver em local ignorado ou incerto, considerando-se configurada a \nhipótese após a frustração das diligências empreendidas para a sua localização pessoal, inclusive \nmediante consultas aos sistemas oficiais disponíveis ao juízo.\nNo caso em exame, foram realizadas sucessivas tentativas de citação postal e por \nmandado cumprido por Oficial de Justiça em diversos endereços vinculados ao requerido, situados \nnesta Comarca e em outros municípios (fls. 68, 70, 90, 91, 112 e 113) . As diligências restaram \ninfrutíferas, constatando-se imóveis fechados, desocupados, avisos de devolução por ausência ou \ndesconhecimento do citando, além de cartas recebidas por terceiros estranhos à lide (fls. 59, 60, 64 \ne 113) .\nAdemais, efetuaram-se pesquisas eletrônicas de paradeiro perante os sistemas \nconveniados Sisbajud, Renajud, Infojud e Serasajud (fls. 48/50) , esgotando-se os meios razoáveis \nao alcance do Poder Judiciário e da parte demandante, o que restou expressamente certificado pela \nserventia judicial (fls. 202) .\nA realização de expedição de ofícios a concessionárias de serviços públicos constitui \nmera faculdade conferida ao julgador e não imposição inflexível para que se legitime o \nchamamento ficto, sobretudo quando as consultas aos cadastros centrais de órgãos públicos e \nsistemas integrados já foram integralmente concretizadas. \nInexistindo vícios procedimentais no edital publicado (fls. 205 e 212) , afasta-se a \nalegação de nulidade citatória.\n2.3. Do Mérito\nNo mérito, a pretensão condenatória formulada pela casa bancária procede \nintegralmente.\nTrata-se de cobrança lastreada na celebração de contrato de empréstimo pessoal \nformalizado via canal eletrônico (mobile banking), sob a operação de número 1987757 (fls. 198) .\nA celebração de contratos por meios eletrônicos e plataformas digitais bancárias é \nplenamente admitida pelo ordenamento jurídico vigente, dispensando a exigência de instrumento \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 269\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 3\nfísico assinado de próprio punho, desde que demonstrada a disponibilização dos recursos \neconômicos em proveito do correntista.\nNa hipótese dos autos, a prova documental é segura ao comprovar a relação jurídica \nobrigacional e a efetiva entrega do numerário. O extrato da conta corrente de titularidade do réu \nevidencia que, em 29/08/2018, ocorreu o crédito integral da quantia de R$ 60.000,00 sob a rubrica \n\&quot;EMPRESTIMO PESSOAL 1987757\&quot; (fls. 24) .\nOs mesmos extratos comprovam que o numerário creditado foi ampla e ativamente \nfruído pelo devedor, que realizou amortizações de débitos anteriores, retiradas, emissão e \ncompensação de cheques e transferências para terceiros nos dias imediatamente subsequentes (fls. \n24/25) . \nTais elementos materiais confirmam a perfeição do negócio jurídico de mútuo \nbancário, a liberação dos valores e a vinculação direta do réu à obrigação de restituí-los nos \nmoldes pactuados.\nPor outro lado, o demonstrativo da operação financeira e a planilha analítica de \nevolução do débito detalham o vencimento da dívida a partir de 29/10/2018, as taxas de juros \nremuneratórios contratadas, a incidência dos juros de mora e da multa moratória de 2% (fls. 19/22) \n.\nA contestação por negativa geral formulada pela Curadoria Especial tem o condão de \ntornar controvertidos os fatos alegados pelo demandante e de elidir a presunção processual de \nveracidade da revelia, mas não possui força probatória para desconstituir os documentos que \natestam a disponibilidade do capital e a evolução da dívida. \nNão havendo prova de quitação do valor cobrado, encargo que competia à parte \nrequerida, impõe-se a procedência do pedido de cobrança no montante pleiteado.\n2.4. Da Gratuidade da Justiça\nIndefiro o benefício da justiça gratuita postulado pela Curadoria Especial em favor do \nréu.\nA representação judicial conferida à Defensoria Pública para patrocinar os interesses \ndo réu revel citado por edital decorre estritamente de munus processual legalmente estabelecido \n(artigo 72, inciso II, do Código de Processo Civil), circunstância que, por si só, não autoriza a \npresunção de vulnerabilidade ou hipossuficiência econômica da parte ausente.\nA concessão do beneplácito legal pressupõe a efetiva demonstração da \nimpossibilidade financeira de arcar com os custos do processo, o que não se verifica nos autos \ndiante da absoluta carência de elementos concretos acerca da condição financeira atual do \ndemandado.\n3. DISPOSITIVO\nAnte o exposto, JULGO PROCEDENTE o pedido inicial, com resolução do mérito \nnos termos do artigo 487, inciso I, do Código de Processo Civil, para o fim de CONDENAR o réu \nGILBERTO ALVES DE OLIVEIRA a pagar ao autor BANCO BRADESCO S.A. a quantia de \nR$ 181.839,41 (cento e oitenta e um mil, oitocentos e trinta e nove reais e quarenta e um \ncentavos), corrigida monetariamente pelos índices da Tabela Prática de Atualização do Tribunal \nde Justiça do Estado de São Paulo e acrescida de juros de mora de 1% (um por cento) ao mês, \nambos contados a partir da data de consolidação do cálculo inicial (23/06/2022).\nEm razão da sucumbência, condeno o réu ao reembolso das custas e despesas \nprocessuais comprovadas pelo autor, bem como ao pagamento dos honorários advocatícios em \nfavor do patrono da parte requerente, os quais fixo em 10% (dez por cento) sobre o valor \natualizado da condenação, com fundamento no artigo 85, parágrafo 2º, do Código de Processo \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 270\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 4\nCivil.\nPublique-se. Intimem-se. Dispensado o registro físico, na forma das normas da \nCorregedoria Geral da Justiça.\nOsasco, 17 de setembro de 2026.\nDOCUMENTO ASSINADO DIGITALMENTE NOS TERMOS DA LEI 11.419/2006, \nCONFORME IMPRESSÃO À MARGEM DIREITA\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 271&quot;,
+      &quot;has_file&quot;: true
+    },
+    {
+      &quot;case_id&quot;: &quot;1002937-34.2022.8.26.0506&quot;,
+      &quot;title&quot;: &quot;Sentença - Indenização por Dano Moral&quot;,
+      &quot;judge&quot;: &quot;ANTONIO MARCELO CUNZOLO RIMOLA&quot;,
+      &quot;court&quot;: &quot;5ª Vara Cível - Foro de Ribeirão Preto&quot;,
+      &quot;source_url&quot;: &quot;https://esaj.tjsp.jus.br/cjpg/&quot;,
+      &quot;local_path&quot;: &quot;C:\\Users\\100OS\\Documents\\Codex\\2026-09-20\\ent-o-eu-t-tentando-criar\\outputs\\demo\\96c5168f-dd67-47bb-972a-350c8723e5d4\\documents\\02_doc_82580423.pdf&quot;,
+      &quot;sha256&quot;: &quot;f5dc345cd7b37aa4217fbbf954b99ef12d47b3ab460470d19bac3429c0ca554d&quot;,
+      &quot;similarity_reason&quot;: &quot;coletado e baixado no TJSP&quot;,
+      &quot;pages&quot;: 2,
+      &quot;chars&quot;: 2962,
+      &quot;preview&quot;: &quot;TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n5ª VARA CÍVEL\nAVENIDA DAS FLORES, 703, Osasco - SP - CEP 06110-100 \n      \n0013922-19.2007.8.26.0405 - lauda 1\nSENTENÇA\nProcesso nº: 0013922-19.2007.8.26.0405\nClasse - Assunto Execução Hipotecária do Sistema Financeiro da Habitação - \nEspécies de Contratos\nRequerente: Associacao de Poupanca e Emprestimo Poupex\nRequerido: Jose Ocimar Barros de Souza e outros\nEm, 14 de julho de 2022, faço  estes  autos  conclusos ao (à) Exmo(a). Sr(a). Juiz(a) de Direito da \n5ª Vara Cível de Osasco. Eu, Paulo Pereira da Luz, Chefe de Seção Judiciário, digitei.\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nTrata-se de ação de execução hipotecária movida inicialmente contra José \nHamilton de Souza e Zilmar Barros de Sousa. \nNoticiado o óbito dos devedores indicados na execução, os herdeiros José \nEduardo de Souza (p.276), José Ocimar Barros de Souza (p.288) e Maria Elena Barros de Souza \n(p.308), foram intimados da penhora realizada pela decisão à p. 256, não sobrevindo notícias de \nembargos à execução.\nApós a realização infrutífera de leilão do imóvel penhorado, a exequente \ninformou a pretens...&quot;,
+      &quot;full_text&quot;: &quot;TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n5ª VARA CÍVEL\nAVENIDA DAS FLORES, 703, Osasco - SP - CEP 06110-100 \n      \n0013922-19.2007.8.26.0405 - lauda 1\nSENTENÇA\nProcesso nº: 0013922-19.2007.8.26.0405\nClasse - Assunto Execução Hipotecária do Sistema Financeiro da Habitação - \nEspécies de Contratos\nRequerente: Associacao de Poupanca e Emprestimo Poupex\nRequerido: Jose Ocimar Barros de Souza e outros\nEm, 14 de julho de 2022, faço  estes  autos  conclusos ao (à) Exmo(a). Sr(a). Juiz(a) de Direito da \n5ª Vara Cível de Osasco. Eu, Paulo Pereira da Luz, Chefe de Seção Judiciário, digitei.\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nTrata-se de ação de execução hipotecária movida inicialmente contra José \nHamilton de Souza e Zilmar Barros de Sousa. \nNoticiado o óbito dos devedores indicados na execução, os herdeiros José \nEduardo de Souza (p.276), José Ocimar Barros de Souza (p.288) e Maria Elena Barros de Souza \n(p.308), foram intimados da penhora realizada pela decisão à p. 256, não sobrevindo notícias de \nembargos à execução.\nApós a realização infrutífera de leilão do imóvel penhorado, a exequente \ninformou a pretensão da adjudicação do bem, pelo valor da dívida (p.397/399).\n Considerando que os herdeiros dos devedores originais não se opuseram à \npenhora e ao leilão realizado, diante da petição do(a/s) exequente(s) às pp. 397/399, JULGO \nEXTINTA pela QUITAÇÃO a presente execução.\nIntime-se por via postal os herdeiros Luiz Eduardo de Souza, José Ocimar Barros \nde Souza e Maria Elena Barros de Souza, nos endereços em que forma citados.\nProvidencie a exequente o recolhimento da taxa postal para intimação, no prazo \nde 5 dias.\nApós, providencie a serventia o necessário.\nCertificado o trânsito em julgado, expeça-se carta de adjudicação em favor \ndo(a/s) exequente(s), conforme requerido, desde que fornecidos os meios necessários.\n Oportunamente, anote-se a baixa no sistema e arquive-se.\nP.I.\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 0013922-19.2007.8.26.0405 e código fhBAip80.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 14/07/2022 às 16:27 .\nfls. 448\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n5ª VARA CÍVEL\nAVENIDA DAS FLORES, 703, Osasco - SP - CEP 06110-100 \n      \n0013922-19.2007.8.26.0405 - lauda 2\nOsasco, 14 de julho de 2022.\nDOCUMENTO ASSINADO DIGITALMENTE NOS TERMOS DA LEI 11.419/2006, \nCONFORME IMPRESSÃO À MARGEM DIREITA\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 0013922-19.2007.8.26.0405 e código fhBAip80.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 14/07/2022 às 16:27 .\nfls. 449&quot;,
+      &quot;has_file&quot;: true
+    },
+    {
+      &quot;case_id&quot;: &quot;0013922-19.2007.8.26.0405&quot;,
+      &quot;title&quot;: &quot;Sentença - Execução Hipotecária SFH&quot;,
+      &quot;judge&quot;: &quot;ANTONIO MARCELO CUNZOLO RIMOLA&quot;,
+      &quot;court&quot;: &quot;5ª Vara Cível - Foro de Osasco&quot;,
+      &quot;source_url&quot;: &quot;https://esaj.tjsp.jus.br/cjpg/&quot;,
+      &quot;local_path&quot;: &quot;C:\\Users\\100OS\\Documents\\Codex\\2026-09-20\\ent-o-eu-t-tentando-criar\\outputs\\demo\\96c5168f-dd67-47bb-972a-350c8723e5d4\\documents\\03_doc_87336637.pdf&quot;,
+      &quot;sha256&quot;: &quot;7f6022536d8cea04015c807f4826a36d2cf0264f91536c75f9f1ed91e26ccbbc&quot;,
+      &quot;similarity_reason&quot;: &quot;coletado e baixado no TJSP&quot;,
+      &quot;pages&quot;: 11,
+      &quot;chars&quot;: 29759,
+      &quot;preview&quot;: &quot;TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1002937-34.2022.8.26.0506\nClasse - Assunto Procedimento Comum Cível - Indenização por Dano Moral\nRequerente: Aparecida Ismeria Junqueira da Silva\nRequerido: União Nacional dos Servidores Públicos do Brasil- Unibrasil\nPrioridade Idoso\nTramitação prioritária\nJustiça Gratuita\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nVistos.\nTrata-se de demanda declaratória de inexistência de débito, c.c. pedido \ncominatório para abstenção de cobrança/desconto, bem como pedidos de repetição do indébito e \nde indenização por danos morais, proposta APARECIDA ISMÉRIA DA SILVA em face \nda UNIBRASIL - UNIÃO BRASILEIRA DE APOSENTADOS DA PREVIDÊNCIA. Narra, \na autora, que a requerida lançou em seu benefício previdenciário descontos sob a rubrica \n“CONTRIBUIÇÃO UNIBRASIL” no valor de R$ 20,90, a contar de janeiro de 2020. Sustenta \nque a conduta da ré é ilegal e abusiva, pois...&quot;,
+      &quot;full_text&quot;: &quot;TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1002937-34.2022.8.26.0506\nClasse - Assunto Procedimento Comum Cível - Indenização por Dano Moral\nRequerente: Aparecida Ismeria Junqueira da Silva\nRequerido: União Nacional dos Servidores Públicos do Brasil- Unibrasil\nPrioridade Idoso\nTramitação prioritária\nJustiça Gratuita\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nVistos.\nTrata-se de demanda declaratória de inexistência de débito, c.c. pedido \ncominatório para abstenção de cobrança/desconto, bem como pedidos de repetição do indébito e \nde indenização por danos morais, proposta APARECIDA ISMÉRIA DA SILVA em face \nda UNIBRASIL - UNIÃO BRASILEIRA DE APOSENTADOS DA PREVIDÊNCIA. Narra, \na autora, que a requerida lançou em seu benefício previdenciário descontos sob a rubrica \n“CONTRIBUIÇÃO UNIBRASIL” no valor de R$ 20,90, a contar de janeiro de 2020. Sustenta \nque a conduta da ré é ilegal e abusiva, pois nunca contratou quaisquer serviços com a parte \nrequerida que autorizassem referidos descontos. Diante desse fato, postula procedência dos \npedidos iniciais para o fim de declarar a inexistência do débito e determinar que a ré se abstenha \nde efetuar qualquer cobrança/desconto, sob pena de multa diária. Pleiteou ainda a condenação \nda ré à repetição dos valores descontados e ao pagamento de indenização, a título de danos \nmorais, no valor de R$ 10.000,00. Deu à causa o valor de R$ 10.020,90, juntando os \ndocumentos de fls. 28/122.\nCitada (fl. 135), a requerida apresentou contestação às fls. 23/36 e, em \npreliminares, articulou com a falta de interesse de agir, ao argumento de que o INSS bloqueou \nos repasses dos valores à requerida. Pleiteou ainda a concessão dos benefícios da justiça gratuita \ne a retificação do polo passivo para constar UNIÃO BRASILEIRA DE APOSENTADOS DA \nPREVIDÊNCIA UNIBAP. No mérito, teceu considerações acerca da boa-fé-objetiva e \ncomentários sobre o instituto do “duty to mitigate the loss”, alegando que agiu de boa-fé e \nsuscitando sobre os diversos meios para solução dos conflitos de consumo. Defendeu que \ncompete ao INSS devolver os valores descontados do benefício da autora. Sustentou que não \nhouve a caracterização de danos morais, afirmando que o dano alegado é inexistente. Pelo \nprincípio da eventualidade, pugnou pela redução da indenização a título de danos morais \nconsiderando o significativo impacto da pandemia em sua capacidade financeira. Por fim, \nrequereu o acolhimento das preliminares arguidas ou, alternativamente, a improcedência dos \npedidos. Juntou documentos (fls. 58/65).\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 181\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 2\nÀs fls. 167/175, impugnação do autora.\nExauriu-se a instrução sem outras provas.\nÉ o relatório.\nFundamento e decido.\nNo mais, indefiro os benefícios da assistência judiciária gratuita, \npleiteados pela ré.\nRegistro que os benefícios da assistência judiciária gratuita têm por \nobjetivo viabilizar o acesso ao Judiciário àqueles que não podem, sem sacrificar o próprio \nsustento, arcar com as custas do processo.\nÉ pacífica na jurisprudência essa extensão às pessoas jurídicas, desde \nque comprovada a impossibilidade de dispor de numerário suficiente para os custos da \ndemanda. Nesse sentido, também dispôs o Novo Código de Processo Civil em seu artigo 98.\nEm conclusão, para o deferimento da gratuidade da justiça a pessoa \njurídica, faz-se necessária a comprovação, de modo satisfatório, da alegada hipossuficiência \npara arcar com as custas processuais.\nNesse sentido, o Enunciado 481 da Súmula do STJ , in verbis : “Faz \njus ao benefício da justiça gratuita a pessoa jurídica com ou sem fins lucrativos que demonstrar \nsua impossibilidade de arcar com os encargos processuais”.\nTodavia, no presente caso, não há nos autos qualquer prova da carência \neconômica da ré. Conquanto tenha apontado ser entidade sem fins lucrativos não comprovou \nsua hipossuficiência financeira, requisito objetivo indispensável para concessão do benefício \npleiteado. Com efeito, tão somente os extratos de contas correntes (fls. 60/65), não se mostram \nsuficientes para retratar a real situação patrimonial e financeira da entidade, ou a \nimpossibilidade de recolher as custas e demais despesas deste processo. A parte poderia ter se \nvalido de balancetes ou outros demonstrativos financeiros, que pudessem melhor elucidar sua \ncapacidade econômica e, no entanto, deixou de fazê-lo, não havendo se falar em presunção de \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 182\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 3\nhipossuficiência de pessoa jurídica, como já dito.\nAssim, o fato de ser uma associação civil sem fins econômicos, não é \nsuficiente a comprovar a insuficiência de recursos e não significa que não possa arcar com os \nônus da sucumbência. Neste sentido:\n“AGRAVO DE INSTRUMENTO. Irresignação em face da decisão que \nindeferiu o pedido de justiça gratuita. Descabimento. O simples fato \nda associação não possuir fins lucrativos não é apto a comprovar a \ninsuficiência de recursos da agravante. Pertinência da comprovação \nda vulnerabilidade econômica, nos termos do art. 5º, LXXIV, CF. Não \nhá elementos capazes de demonstrar a situação de miserabilidade. \nConceder justiça gratuita àqueles que não são comprovadamente \nnecessitados seria desvirtuar as razões do benefício. Precedente do \nSTJ. Recurso improvido1”.\nDesse modo, o pedido da ré não comporta acolhimento.\nNo que tange à preliminar de carência de ação por falta de interesse \nprocessual, sem razão a requerida, pois a autora pretende, além da cessação dos descontos, a \ncondenação da requerida à devolução dos valores descontados, além de indenização por danos \nmorais.\nDesta forma, caracterizada a conflituosidade entre as partes, necessária \na intervenção judicial, em ordem a fazer concluir que presente o interesse de agir, na \nmodalidade \&quot;necessidade\&quot;. Assim, a pertinência ou não dos pleitos formulados enseja, a \nprincípio, a apreciação de seu mérito.\nPor fim, consigno que o Código de Defesa do Consumidor é \nperfeitamente aplicável à espécie, vez que as partes se enquadram nas figuras jurídicas definidas \npelos artigos 2º e 3º da Lei 8.078/90. De um lado temos a requerida, a prestadora de serviços no \nmercado de consumo, que, ainda que se trate de associação sem fins lucrativos, apresenta-se \ncomo pessoa jurídica que oferece facilidades no mercado de consumo organizado e angaria \nrecursos para sua própria manutenção, dependendo, em último caso, das filiações e das \nmensalidades de seus membros para manutenção de suas atividades essenciais. Até porque não \nhá um único serviço concreto que teria sido prestado, pela associação à autora, e que justificaria \n1 - TJSP, Agravo de Instrumento nº 2122075-17.2017.8.26.0000 , Órgão julgador: 5ª Câmara de \nDireito Privado, da Comarca de Itapetininga, Relator: James Siano, Data do Julgamento: \n03/09/2017;\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 183\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 4\nseu atuar, em prol dos supostos aposentados. De outro lado, por sua vez, se encontra o \nconsumidor hipossuficiente financeira e tecnicamente - a autora aposentada, pessoa física que \nsupostamente adquiriu um serviço como destinatário final, no conceito de consumidor final.\nPortanto, a autora deve ser amparada pela legislação consumerista.\nOs pedidos iniciais são procedentes, em parte.\nTrata-se de demanda em que a autora pleiteia a declaração \nde inexistência de débito, descontado indevidamente em seu benefício previdenciário. Pleiteia \nainda a condenação da ré na obrigação de fazer consistente na cessação dos descontos, à \nrepetição do indébito dos valores descontados indevidamente e indenização por danos morais.\nDa análise da prova documental colacionada aos autos, extrai-se que, a \npartir da competência 01/2022 a requerida procedeu ao desconto em benefício previdenciário da \nautora sob a rubrica “CONTRIBUIÇÃO UNIBRASIL”.\nAlega a autora que jamais entabulou qualquer contrato com a \nrequerida, que justificasse os mencionados descontos.\nComo já ressaltado em preliminares, a relação jurídica entre as partes é \nde natureza consumerista, a exigir a aplicação do Código de Defesa do Consumidor.\nRessalte-se que o artigo 14, de sobredito diploma, estabelece a \nresponsabilidade dos fornecedores pelos danos gerados ao consumidor em virtude de defeitos na \nprestação de serviços.\nAssim, de acordo com os ditames da legislação consumerista, a \nresponsabilidade do fornecedor pelos danos causados ao consumidor decorrentes de fato ou de \nvício e defeito nos produtos e serviços é de natureza objetiva, prescindindo, assim, da análise de \nculpa.\nSurge daí que, em ambiente de relação de consumo, é do fornecedor o \nônus de provar a regularidade da prestação de seus serviços e eventual causa excludente do \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 184\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 5\nartigo 14, § 3º, do CDC. Nesse sentido:\n“O ônus da prova das excludentes da responsabilidade do fornecedor \nde serviços, previstas no art. 14, § 3º, do CDC, é do fornecedor, por \nforça do art. 12, § 3º, também do CDC2”.\nVale assinalar que essa obrigação só é elidida se comprovada alguma \nexcludente de responsabilidade, como a culpa exclusiva da vítima ou de terceiro ou que não \nocorreu defeito na prestação do serviço (artigo 14, § 3º, incisos I e II, Código de Defesa do \nConsumidor).\nNessa esteira, ressalto ainda que, nos termos daquilo que determina o \nartigo 373, inciso II, do Novo Código de Processo Civil, competia à parte ré comprovar fato \nextintivo, modificativo ou impeditivo do direito da autora, ou seja, a regularidade da \ncontratação e dos descontos efetuados em seu benefício previdenciário e que não poderiam ter \nsido decorrente de falha na prestação de seus serviços.\nAliás, neste ponto é importante ressaltar que seria impossível para a \nautora comprovar a existência de fato negativo, ou seja, de que não firmou contrato com a ré.\nDesse modo, se à autora é impossível tal prova, por outro lado, a \nprovidência seria simples à requerida, que deve contar com as informações necessárias em seu \nbanco de dados. Além disso, por força do princípio da carga dinâmica das provas, absorvida \npelo Novo Código de Processo Civil, que impõe o ônus da prova à parte que estiver em \nmelhores condições de produzi- la, era exigível da ré que produzisse tal prova.\nAssim tal ônus era da ré, que dele não se desincumbiu. Vejamos.\nA ré não trouxe qualquer documento a comprovar a associação da \nautora aos seus quadros, de modo a confirmar a validade de vínculo entre as partes que \njustificasse os descontos realizados mensalmente no benefício da autora. Com efeito, cuidando-\nse de filiação com autorização de desconto em benefício previdenciário, imprescindível a prova \nda válida formalização do contrato e a exibição da via original do instrumento respectivo, \ndevidamente assinado pelo contratante; o que, no entanto, não foi feito.\n2 - (STJ-3ª Turma, REsp 685662/RJ , rel. Min. Nancy Andrighi, v.u., j. 10/11/2005, DJ \n05/12/2005 pg. 323;\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 185\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 6\nNão constam dos autos quaisquer documentos que comprovem a \nfiliação da requerente. A requerida sequer juntou contrato de adesão à associação devidamente \nregularizado e assinado pela requerente, a fim de exteriorizar a manifestação livre e consciente \nde vontade associativa. Não apresentou documentos aptos a comprovar que a autora \nefetivamente autorizou os descontos em seu benefício previdenciário como associado \ncontribuinte. Não demonstrou a existência da relação jurídica e a manifestação de vontade da \nautora no sentido de contratar os seus serviços. Não demonstrou a contratação ou mesmo a \nautorização da autora para que a operação fosse efetuada, muito embora isso lhe fosse fácil e o \ncontraditório lhe propiciasse tal defesa. Vale lembrar que os documentos devem acompanhar a \ncontestação, nos termos do artigo 434, do Código de Processo Civil.\nAssim, as alegações da requerida, por si só, não são capazes de elidir \nas afirmações iniciais, já que não produziu qualquer outra prova a fim de desconstituir o direito \nda autora.\nConclui-se, portanto, que a requerida não logrou êxito em provar as \nexcludentes do artigo 14, parágrafo 3º, do Código de Defesa do Consumidor, bem como a \nexistência de fato impeditivo, modificativo ou extintivo do direito da autora, como exige o \nartigo 373, II, do Código de Processo Civil, notadamente a existência da relação jurídica por \nmeio de contrato celebrado com a autora.\nPor tudo isso, é forçoso reconhecer que houve desconto indevido.\nE tal situação é caracterizada como defeito no serviço e a requerida \nassume os riscos de tais equívocos, já que é ela quem suporta os riscos de sua atividade. Trata-\nse de risco inerente à atividade explorada e não pode pretender transferir à autora o risco da \noperação, que certamente lhe é vantajosa e lucrativa.\nNesse sentido, necessário reconhecer a irregularidade dos descontos \nem benefício previdenciário da autora registrados sob a rubrica “CONTRIBUIÇÃO \nUNIBRASIL”.\nPor consequência, o pedido declaratório de inexistência do débito \né procedente.\nCom relação à repetição do indébito, observo que houve, de fato, a \ncobrança/desconto no benefício da autora do valor de R$ 20,90, portanto, houve desconto \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 186\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 7\nindevido e não autorizado pela parte autora.\nAssim, constatada a irregularidade dos descontos, a requerente faz jus \nà repetição, de maneira simples, ante a ausência de má fé, dos valores efetivamente \ndescontados, a serem demonstrados em fase de cumprimento de sentença.\nRelativamente aos danos morais pleiteados o pedido é improcedente.\nÉ certo que o dano moral corresponde à consequência da prática de um \nato capaz a atingir os direitos da personalidade. No entanto, para que excessos e abusos sejam \nevitados em demandas que, sob a alegação de dano moral, busquem um enriquecimento \ninjustificado, mister se faz a distinção entre o dano moral e o mero aborrecimento.\nNesse viés, é a orientação doutrinária:\n“Nessa linha de princípio, só deve ser reputado como dano moral a \ndor, o vexame, sofrimento ou humilhação que, fugindo à normalidade, \ninterfira intensamente no comportamento psicológico do indivíduo, \ncausando-lhe aflições, angústia e desequilíbrio em seu bem-estar. \nMero dissabor, aborrecimento, mágoa, irritação ou sensibilidade \nexacerbada estão fora da órbita do dano moral, porquanto, além de \nfazerem parte da normalidade do nosso dia a dia, no trabalho, no \ntrânsito, entre os amigos e até no ambiente familiar, tais situações não \nsão intensas e duradouras, a ponto de romper o equilíbrio psicológico \ndo indivíduo. Se assim não se entender, acabaremos por banalizar o \ndano moral, ensejando ações judiciais em busca de indenizações pelos \nmais triviais aborrecimentos. Dor, vexame, sofrimento e humilhação \nsão consequência e não causa. Assim como a febre é o efeito de uma \nagressão orgânica, dor, vexame e sofrimento só poderão ser \nconsiderados dano moral quando tiverem por causa uma agressão à \ndignidade de alguém3”.\n“Tanto doutrina e jurisprudência sinalizam para o fato de que o dano \nmoral suportado por alguém não se confunde com os meros \ntranstornos ou aborrecimentos que o cidadão sofre no diaadia. Isso, \nsob pena de colocar em descrédito a própria concepção da \nresponsabilidade civil. Cabe ao juiz, analisando o caso concreto e \ndiante da sua experiência apontar se a reparação imaterial é cabível \n3  (Cavalieri Filho)\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 187\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 8\nou não. Nesse sentido, foi aprovado o Enunciado n. 159 do Conselho \nda Justiça Federal na III Jornada de Direito Civil, pelo qual o dano \nmoral não se confunde com os meros aborrecimentos decorrentes de \nprejuízo material4”.\nO que se extrai da leitura dos excertos acima transcritos é que meros \ntranstornos não ensejam a indenização por danos morais, já que refletem problemas do \ncotidiano, sem atingir a esfera dos direitos da personalidade da vítima.\nAinda nesse viés, nos ensina Fábio Ulhôa Coelho que:\n“em suma, a indenização por danos morais, será instituto tanto mais \nprestigiado quanto menos for desvirtuado. Não interessa à sociedade \nou à economia que dissabores, desconfortos, aborrecimentos ou \napoquentação gerem custos socializáveis. Definitivamente, não \ninteressa criarmos um mundo de não-me-toques”.\nNa hipótese dos autos, ficou demonstrada a irregularidade dos \ndescontos. Nesse contexto, caracterizado o ato ilícito. Entretanto, verifico que os fatos \nafirmados não excedem o dissabor havido face ao evento, que se restringiu aos descontos em \nbenefício previdenciário da autora, sem que se tivesse constado que o seu nome teria sido \ninscrito nos órgãos de proteção ao crédito. E mais, os débitos ocorridos não levaram à \ndevolução de cheques ou mesmo a saldo negativo. Além disso, são valores de pequena monta \nque não comprometem a renda da autora.\nHá que se atentar para o fato de que nem todo mal estar é capaz de \nproduzir danos morais. Para tanto, é necessário que o dissabor experimentado revista-se de \ngravidade suficiente para que se possa vislumbrar lesão a algum direito fundamental da pessoa, \nvez que meros transtornos não ensejam a indenização por danos morais, eis que refletem \nproblemas do cotidiano, sem repercutir na esfera dos direitos da personalidade da autora. No \nponto, a nulidade contratual, por si só, é insuficiente para a caracterização da lesão ao direito de \npersonalidade. Assim, a situação está distante de violação a direito da personalidade, ou ofensa \nà dignidade da pessoa humana, não havendo a ocorrência de danos morais.\nE, a despeito da alegação de perda de seu tempo livre, certo é que \ndeterminadas situações cotidianamente enfrentadas em relações negociais acarrretam, \nrealmente, a necessidade de disposição do tempo para que seja logrado êxito na busca da \nsolução.\n4 \&quot; (Flávio Tartuce)\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 188\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 9\nNo entanto, tal como na hipótese, a consequência não é de tal \ngravidade a margear condenação à indenização de danos extrapatrimoniais. Enfim, da situação \nfática não se infere a ocorrência de transtornos anormais na tranquilidade da pessoa ou abalo \npsíquico grave ou dano a sua dignidade pessoal.\nEm suma, o que se tem, no caso em questão, é situação que gera mero \ndissabor ou aborrecimento, mas não dano moral indenizável. O acontecimento vivenciado pela \nautora não extrapolou o limite dos aborrecimentos a que todos nós estamos diariamente sujeitos. \nInexistiu afronta à sua honra, dignidade ou imagem.\nNesse sentido:\n“AÇÃO DECLARATÓRIA DE INEXISTÊNCIA DE RELAÇÃO \nJURÍDICA C.C. PEDIDO DE INDENIZAÇÃO POR DANOS MORAIS. \nSentença de parcial procedência. Declaração de inexistência de \nrelação jurídica. Rejeição da pretensão condenatória. Simples \ncobrança de débitos decorrentes de relação jurídica posteriormente \ndeclarada inexistente. Não comprovação de danos morais. Dissabores \ne aborrecimento normais do cotidiano. Ausência de efetiva \nnegativação. Danos morais não configurados. SENTENÇA MANTIDA. \nRECURSO DESPROVIDO5”;\n“APELAÇÃO - AÇÃO DE INDENIZAÇÃO POR DANOS MATERIAIS E \nMORAIS POR COBRANÇA INDEVIDA E PEDIDO DE TUTELA \nANTECIPADA EMPRESTIMO CONSIGNADO - INSS - \nREFINANCIAMENTO DO VALOR COM TROCO - FRAUDE \nPERPETUADA POR TERCEIROS - SENTENÇA DE PARCIAL \nPROCEDÊNCIA - RECURSO - DANO MORAL - AUSENTE - \nCONDUTA QUE NÃO ULTRAPASSOU O MERO ABORRECIMENTO \nAUSENCIA DE RESTRIÇÃO CREDITICIA - FATO DO COTIDIANO \nMODERNO - SENTENÇA MANTIDA RECURSO DESPROVIDO6”.\nÀ ausência de qualquer abalo em seus direitos da personalidade, deixo \nde acolher o pedido de indenização por danos morais, formulado pela autora.\nOs demais argumentos são incapazes de refutar os fundamentos aqui \nadotados, razão pela qual ficam integralmente afastados. \n5 - TJ/SP - Apelação nº 1020005-67.2015.8.26.0562 , Comarca de Santos, 25ª Câmara de Direito \nPrivado, Rel. Des. Azuma Nishi, Dj. 06/04/2016;\n6 - TJ/SP - Apelação nº 0005279-46.2013.8.26.0572 , Comarca de São Joaquim da Barra, 14ª \nCâmara de Direito Privado, Rel. Des. Carlos Abrão, Dj. 06/04/2016;\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 189\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 10\nPara evitar futuros questionamentos desnecessários observo que tenho \npor expressamente ventilados, neste grau de jurisdição, todos os dispositivos legais e \nconstitucionais citados no feito.\nSaliento ainda que a função do julgador é decidir a lide de modo \nfundamentado e objetivo, portanto, desnecessário o enfrentamento exaustivo de todos os \nargumentos elaborados pelas partes pelo que, por fim, anota-se que outros argumentos \neventualmente deduzidos no processo não são capazes de, em tese, infirmar a presente \nconclusão. \nAnoto, por fim, que a devolução do valor indevidamente descontado \nbasta para sanar o prejuízo experimentado.\nÀ evidência de todo o exposto e considerando o mais que dos autos \nconsta, JULGO PROCEDENTES em parte os pedidos formulados na inicial para o fim de \nDECLARAR a inexistência do débito no que se refere ao(s) desconto(s) efetuado(s) no \nbenefício previdenciário da autora sob a rubrica “CONTRINUIÇÃO \nUNIBRASIL”, DETERMINAR que a ré se abstenha de efetuar qualquer cobrança/desconto sob \nrespetiva rubrica e CONDENAR a requerida a restituir à autora, de maneira simples, os \nvalores descontados do benefício previdenciário, sob respectiva rubrica, a serem demonstrados \nem fase de cumprimento de sentença.\nO valor devido será atualizado monetariamente pelos índices da Tabela \nPrática do Tribunal de Justiça incidente a partir de cada desconto e acrescido de juros de mora \nde 1% ao mês, da citação.\nEm consequência, julgo EXTINTA A FASE DE CONHECIMENTO, \ncom resolução de mérito, com base no artigo 487, inciso I, do Código de Processo Civil.\nUma vez que a autora foi sucumbente em maior parte (improcedência \ndo pedido de dano moral no valor de 10 mil reais), nos termos dos artigos 85, parágrafo 2º, \ne 86, parágrafo único, do Código de Processo Civil, condeno-a ao pagamento das custas, \ndespesas processuais e honorários advocatícios que fixo em R$ 800,00, ficando suspenso a teor \ndo disposto no art. 98, § 3º, do CPC.\nObservo que, para o caso de recurso, o recorrente deverá observar os \ntermos da Lei Estadual 11.608/2003 e o Provimento nº 577/97, do Egrégio Conselho Superior \nda Magistratura.\nConsidera-se prequestionada toda a matéria ventilada neste recurso, \nsendo dispensável a indicação expressa de artigos de lei e, consequentemente, desnecessária a \ninterposição de embargos declaratórios com tal finalidade e que, sua oposição fora das hipóteses \nlegais e/ou com postulação meramente infringente ensejará, se o caso for, a imposição da multa \nprevista pelo artigo 1026, § 2º, NCPC.\nFicam as partes advertidas, desde logo, que qualquer alteração de \nendereço, no curso do processo, deverá ser comunicada ao Juízo, sob pena de reputarem-se \neficazes as intimações enviadas ao local anteriormente indicado, em atenção à regra do artigo 274, \nparágrafo único do Código de Processo Civil. \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 190\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 11\nPara fins de recurso, excetuada a hipótese de gratuidade, deverá ser \nrecolhido o preparo de 4% sobre o valor da condenação, se houver, ou, caso não haja, ou não seja \npossível desde logo apurar o montante, sobre o valor atualizado da causa, observado o patamar \nmínimo de 5 UFESPs. Providencie a serventia o cálculo.\nDispensado o registro, nos termos do art. 72, § 6º, das Normas de \nServiço da Egrégia Corregedoria Geral da Justiça do Estado de São Paulo. \nSentença publicada com a liberação nos autos digitais. \nIntimem-se. Cumpra-se. \nRibeirão Preto, 22 de maio de 2023.\nDOCUMENTO ASSINADO DIGITALMENTE NOS TERMOS DA LEI 11.419/2006, \nCONFORME IMPRESSÃO À MARGEM DIREITA\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 191&quot;,
+      &quot;has_file&quot;: true
+    }
+  ]
+}</pre>
+    </div>
+
+    <footer>
+      Demonstração do Subagente de Pesquisa Documental — Browser Use & Python TJSP Scraper Engine.
+    </footer>
+
+  </div>
+
+  <!-- Full Text Modal -->
+  <div class="modal-overlay" id="text-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title" style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: #fff;">Visualizador de Decisão</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script>
+    const demoData = {
+  "plan": {
+    "query": "emprestimo",
+    "judge": "ANTONIO MARCELO CUNZOLO RIMOLA",
+    "court": null,
+    "similarity_criteria": [],
+    "document_limit": 3
+  },
+  "meta": {
+    "run_id": "96c5168f-dd67-47bb-972a-350c8723e5d4",
+    "browser_use_run_id": "96c5168f-dd67-47bb-972a-350c8723e5d4",
+    "model": "gpt-5.6-luna (fallback deepseek-v4.1-flash)",
+    "duration_seconds": 0.007999897003173828,
+    "created_at": "2026-09-20T11:01:57.996942"
+  },
+  "docs": [
+    {
+      "case_id": "1023372-41.2022.8.26.0405",
+      "title": "Sentença - Contratos Bancários",
+      "judge": "ANTONIO MARCELO CUNZOLO RIMOLA",
+      "court": "8ª Vara Cível - Foro de Osasco",
+      "source_url": "https://esaj.tjsp.jus.br/cjpg/",
+      "local_path": "C:\\Users\\100OS\\Documents\\Codex\\2026-09-20\\ent-o-eu-t-tentando-criar\\outputs\\demo\\96c5168f-dd67-47bb-972a-350c8723e5d4\\documents\\01_doc_133923819.pdf",
+      "sha256": "67276b94c634e1f3bf5c618a3f55c054c1db57a9d2ed60fbb29ced73b5f2be86",
+      "similarity_reason": "coletado e baixado no TJSP",
+      "pages": 4,
+      "chars": 11640,
+      "preview": "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1023372-41.2022.8.26.0405\nClasse - Assunto Procedimento Comum Cível - Contratos Bancários\nRequerente: BANCO BRADESCO S.A.\nRequerido: Gilberto Alves de Oliveira\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\n \nSENTENÇA\n1. RELATÓRIO\nVistos.\nTrata-se de ação de cobrança proposta por BANCO BRADESCO S.A. em face de \nGILBERTO ALVES DE OLIVEIRA (fls. 1/2) . \nNarra a instituição autora, em síntese, que celebrou com o réu a contratação de \nempréstimo pessoal sob o número 1987757, formalizado por canal eletrônico em 29/08/2018, no \nmontante principal de R$ 60.000,00, a ser pago mediante prestações mensais de R$ 2.744,93 (fls. \n1 e fls. 198) . Afirma que o demandado incidiu em inadimplemento desde a parcela vencida em \n29/10/2018, totalizando um débito consolidado de R$ 181.839,41 na data da propositura da \ndemanda (fls. 1) . Diante disso, requereu a condenação da parte ré ao pagamento da referida \nimp...",
+      "full_text": "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1023372-41.2022.8.26.0405\nClasse - Assunto Procedimento Comum Cível - Contratos Bancários\nRequerente: BANCO BRADESCO S.A.\nRequerido: Gilberto Alves de Oliveira\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\n \nSENTENÇA\n1. RELATÓRIO\nVistos.\nTrata-se de ação de cobrança proposta por BANCO BRADESCO S.A. em face de \nGILBERTO ALVES DE OLIVEIRA (fls. 1/2) . \nNarra a instituição autora, em síntese, que celebrou com o réu a contratação de \nempréstimo pessoal sob o número 1987757, formalizado por canal eletrônico em 29/08/2018, no \nmontante principal de R$ 60.000,00, a ser pago mediante prestações mensais de R$ 2.744,93 (fls. \n1 e fls. 198) . Afirma que o demandado incidiu em inadimplemento desde a parcela vencida em \n29/10/2018, totalizando um débito consolidado de R$ 181.839,41 na data da propositura da \ndemanda (fls. 1) . Diante disso, requereu a condenação da parte ré ao pagamento da referida \nimportância, com os acréscimos legais, além dos encargos sucumbenciais (fls. 2) . Juntou \ndemonstrativos de evolução do débito e extratos de movimentação da conta corrente (fls. 19/23 e \n24/25) .\nApós reiteradas diligências citatórias infrutíferas por via postal e por mandado nos \nendereços cadastrados e naqueles obtidos mediante buscas nos sistemas conveniados Sisbajud, \nRenajud, Infojud e Serasajud (fls. 68, 70, 79, 90, 112, 123 e 124) , a serventia certificou o \nesgotamento das tentativas de localização pessoal do réu (fls. 202) .\nFoi deferida e aperfeiçoada a citação por edital (fls. 199 e 205) . Decorrido o prazo \neditalício sem a apresentação de manifestação pelo demandado (fls. 215) , nomeou-se a \nDefensoria Pública do Estado de São Paulo para o exercício do encargo de Curadora Especial (fls. \n218) .\nA Curadoria Especial apresentou contestação (fls. 224/230) . Suscitou, em matéria \npreliminar, a nulidade da citação editalícia por inobservância do esgotamento de diligências de \nlocalização, apontando a ausência de pesquisas em outros cadastros e requisições a \nconcessionárias de serviços públicos (fls. 224/227) . No mérito, ofertou defesa por negativa geral, \ncom fundamento no artigo 341, parágrafo único, do Código de Processo Civil, controvertendo os \nfatos alegados (fls. 227/228) . Postulou a concessão da gratuidade da justiça e a fixação de \nhonorários sucumbenciais em prol do fundo da instituição (fls. 228/229) .\nO autor ofereceu réplica, sustentando a regularidade formal do ato citatório editalício \ne reiterando a procedência do pedido inicial (fls. 234/242) .\nInstadas a especificar provas (fls. 248) , a parte autora manifestou desinteresse na \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 268\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 2\nprodução de outras provas e na audiência conciliatória, requerendo o julgamento antecipado (fls. \n254 e 255) .\nVieram os autos conclusos para julgamento.\n2. FUNDAMENTAÇÃO\n2.1. Do Julgamento Antecipado da Lide\nO feito comporta julgamento imediato no estado em que se encontra, com apoio no \nartigo 355, inciso I, do Código de Processo Civil, porquanto a matéria controvertida independe de \ndilação probatória além dos documentos carreados aos autos.\nCom efeito, conquanto a contestação por negativa geral apresentada por curador \nespecial torne controvertidos os fatos constitutivos do direito afirmado na inicial (artigo 341, \nparágrafo único, do Código de Processo Civil), essa prerrogativa processual não obsta o \njulgamento antecipado do mérito quando a elucidação da demanda depende apenas da prova \ndocumental já encartada ao processo.\n2.2. Da Preliminar de Nulidade da Citação por Edital\nA preliminar de nulidade da citação editalícia ventilada pela Curadoria Especial deve \nser rejeitada.\nO artigo 256, inciso II e parágrafo 3º, do Código de Processo Civil autoriza a citação \neditalícia quando o réu estiver em local ignorado ou incerto, considerando-se configurada a \nhipótese após a frustração das diligências empreendidas para a sua localização pessoal, inclusive \nmediante consultas aos sistemas oficiais disponíveis ao juízo.\nNo caso em exame, foram realizadas sucessivas tentativas de citação postal e por \nmandado cumprido por Oficial de Justiça em diversos endereços vinculados ao requerido, situados \nnesta Comarca e em outros municípios (fls. 68, 70, 90, 91, 112 e 113) . As diligências restaram \ninfrutíferas, constatando-se imóveis fechados, desocupados, avisos de devolução por ausência ou \ndesconhecimento do citando, além de cartas recebidas por terceiros estranhos à lide (fls. 59, 60, 64 \ne 113) .\nAdemais, efetuaram-se pesquisas eletrônicas de paradeiro perante os sistemas \nconveniados Sisbajud, Renajud, Infojud e Serasajud (fls. 48/50) , esgotando-se os meios razoáveis \nao alcance do Poder Judiciário e da parte demandante, o que restou expressamente certificado pela \nserventia judicial (fls. 202) .\nA realização de expedição de ofícios a concessionárias de serviços públicos constitui \nmera faculdade conferida ao julgador e não imposição inflexível para que se legitime o \nchamamento ficto, sobretudo quando as consultas aos cadastros centrais de órgãos públicos e \nsistemas integrados já foram integralmente concretizadas. \nInexistindo vícios procedimentais no edital publicado (fls. 205 e 212) , afasta-se a \nalegação de nulidade citatória.\n2.3. Do Mérito\nNo mérito, a pretensão condenatória formulada pela casa bancária procede \nintegralmente.\nTrata-se de cobrança lastreada na celebração de contrato de empréstimo pessoal \nformalizado via canal eletrônico (mobile banking), sob a operação de número 1987757 (fls. 198) .\nA celebração de contratos por meios eletrônicos e plataformas digitais bancárias é \nplenamente admitida pelo ordenamento jurídico vigente, dispensando a exigência de instrumento \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 269\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 3\nfísico assinado de próprio punho, desde que demonstrada a disponibilização dos recursos \neconômicos em proveito do correntista.\nNa hipótese dos autos, a prova documental é segura ao comprovar a relação jurídica \nobrigacional e a efetiva entrega do numerário. O extrato da conta corrente de titularidade do réu \nevidencia que, em 29/08/2018, ocorreu o crédito integral da quantia de R$ 60.000,00 sob a rubrica \n\"EMPRESTIMO PESSOAL 1987757\" (fls. 24) .\nOs mesmos extratos comprovam que o numerário creditado foi ampla e ativamente \nfruído pelo devedor, que realizou amortizações de débitos anteriores, retiradas, emissão e \ncompensação de cheques e transferências para terceiros nos dias imediatamente subsequentes (fls. \n24/25) . \nTais elementos materiais confirmam a perfeição do negócio jurídico de mútuo \nbancário, a liberação dos valores e a vinculação direta do réu à obrigação de restituí-los nos \nmoldes pactuados.\nPor outro lado, o demonstrativo da operação financeira e a planilha analítica de \nevolução do débito detalham o vencimento da dívida a partir de 29/10/2018, as taxas de juros \nremuneratórios contratadas, a incidência dos juros de mora e da multa moratória de 2% (fls. 19/22) \n.\nA contestação por negativa geral formulada pela Curadoria Especial tem o condão de \ntornar controvertidos os fatos alegados pelo demandante e de elidir a presunção processual de \nveracidade da revelia, mas não possui força probatória para desconstituir os documentos que \natestam a disponibilidade do capital e a evolução da dívida. \nNão havendo prova de quitação do valor cobrado, encargo que competia à parte \nrequerida, impõe-se a procedência do pedido de cobrança no montante pleiteado.\n2.4. Da Gratuidade da Justiça\nIndefiro o benefício da justiça gratuita postulado pela Curadoria Especial em favor do \nréu.\nA representação judicial conferida à Defensoria Pública para patrocinar os interesses \ndo réu revel citado por edital decorre estritamente de munus processual legalmente estabelecido \n(artigo 72, inciso II, do Código de Processo Civil), circunstância que, por si só, não autoriza a \npresunção de vulnerabilidade ou hipossuficiência econômica da parte ausente.\nA concessão do beneplácito legal pressupõe a efetiva demonstração da \nimpossibilidade financeira de arcar com os custos do processo, o que não se verifica nos autos \ndiante da absoluta carência de elementos concretos acerca da condição financeira atual do \ndemandado.\n3. DISPOSITIVO\nAnte o exposto, JULGO PROCEDENTE o pedido inicial, com resolução do mérito \nnos termos do artigo 487, inciso I, do Código de Processo Civil, para o fim de CONDENAR o réu \nGILBERTO ALVES DE OLIVEIRA a pagar ao autor BANCO BRADESCO S.A. a quantia de \nR$ 181.839,41 (cento e oitenta e um mil, oitocentos e trinta e nove reais e quarenta e um \ncentavos), corrigida monetariamente pelos índices da Tabela Prática de Atualização do Tribunal \nde Justiça do Estado de São Paulo e acrescida de juros de mora de 1% (um por cento) ao mês, \nambos contados a partir da data de consolidação do cálculo inicial (23/06/2022).\nEm razão da sucumbência, condeno o réu ao reembolso das custas e despesas \nprocessuais comprovadas pelo autor, bem como ao pagamento dos honorários advocatícios em \nfavor do patrono da parte requerente, os quais fixo em 10% (dez por cento) sobre o valor \natualizado da condenação, com fundamento no artigo 85, parágrafo 2º, do Código de Processo \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 270\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n8ª VARA CÍVEL\nAV. DAS FLORES, 703, Osasco - SP - CEP 06110-100\nHorário de Atendimento ao Público: das 13h00min às17h00min\n      \n1023372-41.2022.8.26.0405 - lauda 4\nCivil.\nPublique-se. Intimem-se. Dispensado o registro físico, na forma das normas da \nCorregedoria Geral da Justiça.\nOsasco, 17 de setembro de 2026.\nDOCUMENTO ASSINADO DIGITALMENTE NOS TERMOS DA LEI 11.419/2006, \nCONFORME IMPRESSÃO À MARGEM DIREITA\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1023372-41.2022.8.26.0405 e código gRiwl9f2.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 17/09/2026 às 11:27 .\nfls. 271",
+      "has_file": true
+    },
+    {
+      "case_id": "1002937-34.2022.8.26.0506",
+      "title": "Sentença - Indenização por Dano Moral",
+      "judge": "ANTONIO MARCELO CUNZOLO RIMOLA",
+      "court": "5ª Vara Cível - Foro de Ribeirão Preto",
+      "source_url": "https://esaj.tjsp.jus.br/cjpg/",
+      "local_path": "C:\\Users\\100OS\\Documents\\Codex\\2026-09-20\\ent-o-eu-t-tentando-criar\\outputs\\demo\\96c5168f-dd67-47bb-972a-350c8723e5d4\\documents\\02_doc_82580423.pdf",
+      "sha256": "f5dc345cd7b37aa4217fbbf954b99ef12d47b3ab460470d19bac3429c0ca554d",
+      "similarity_reason": "coletado e baixado no TJSP",
+      "pages": 2,
+      "chars": 2962,
+      "preview": "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n5ª VARA CÍVEL\nAVENIDA DAS FLORES, 703, Osasco - SP - CEP 06110-100 \n      \n0013922-19.2007.8.26.0405 - lauda 1\nSENTENÇA\nProcesso nº: 0013922-19.2007.8.26.0405\nClasse - Assunto Execução Hipotecária do Sistema Financeiro da Habitação - \nEspécies de Contratos\nRequerente: Associacao de Poupanca e Emprestimo Poupex\nRequerido: Jose Ocimar Barros de Souza e outros\nEm, 14 de julho de 2022, faço  estes  autos  conclusos ao (à) Exmo(a). Sr(a). Juiz(a) de Direito da \n5ª Vara Cível de Osasco. Eu, Paulo Pereira da Luz, Chefe de Seção Judiciário, digitei.\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nTrata-se de ação de execução hipotecária movida inicialmente contra José \nHamilton de Souza e Zilmar Barros de Sousa. \nNoticiado o óbito dos devedores indicados na execução, os herdeiros José \nEduardo de Souza (p.276), José Ocimar Barros de Souza (p.288) e Maria Elena Barros de Souza \n(p.308), foram intimados da penhora realizada pela decisão à p. 256, não sobrevindo notícias de \nembargos à execução.\nApós a realização infrutífera de leilão do imóvel penhorado, a exequente \ninformou a pretens...",
+      "full_text": "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n5ª VARA CÍVEL\nAVENIDA DAS FLORES, 703, Osasco - SP - CEP 06110-100 \n      \n0013922-19.2007.8.26.0405 - lauda 1\nSENTENÇA\nProcesso nº: 0013922-19.2007.8.26.0405\nClasse - Assunto Execução Hipotecária do Sistema Financeiro da Habitação - \nEspécies de Contratos\nRequerente: Associacao de Poupanca e Emprestimo Poupex\nRequerido: Jose Ocimar Barros de Souza e outros\nEm, 14 de julho de 2022, faço  estes  autos  conclusos ao (à) Exmo(a). Sr(a). Juiz(a) de Direito da \n5ª Vara Cível de Osasco. Eu, Paulo Pereira da Luz, Chefe de Seção Judiciário, digitei.\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nTrata-se de ação de execução hipotecária movida inicialmente contra José \nHamilton de Souza e Zilmar Barros de Sousa. \nNoticiado o óbito dos devedores indicados na execução, os herdeiros José \nEduardo de Souza (p.276), José Ocimar Barros de Souza (p.288) e Maria Elena Barros de Souza \n(p.308), foram intimados da penhora realizada pela decisão à p. 256, não sobrevindo notícias de \nembargos à execução.\nApós a realização infrutífera de leilão do imóvel penhorado, a exequente \ninformou a pretensão da adjudicação do bem, pelo valor da dívida (p.397/399).\n Considerando que os herdeiros dos devedores originais não se opuseram à \npenhora e ao leilão realizado, diante da petição do(a/s) exequente(s) às pp. 397/399, JULGO \nEXTINTA pela QUITAÇÃO a presente execução.\nIntime-se por via postal os herdeiros Luiz Eduardo de Souza, José Ocimar Barros \nde Souza e Maria Elena Barros de Souza, nos endereços em que forma citados.\nProvidencie a exequente o recolhimento da taxa postal para intimação, no prazo \nde 5 dias.\nApós, providencie a serventia o necessário.\nCertificado o trânsito em julgado, expeça-se carta de adjudicação em favor \ndo(a/s) exequente(s), conforme requerido, desde que fornecidos os meios necessários.\n Oportunamente, anote-se a baixa no sistema e arquive-se.\nP.I.\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 0013922-19.2007.8.26.0405 e código fhBAip80.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 14/07/2022 às 16:27 .\nfls. 448\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE OSASCO\nFORO DE OSASCO\n5ª VARA CÍVEL\nAVENIDA DAS FLORES, 703, Osasco - SP - CEP 06110-100 \n      \n0013922-19.2007.8.26.0405 - lauda 2\nOsasco, 14 de julho de 2022.\nDOCUMENTO ASSINADO DIGITALMENTE NOS TERMOS DA LEI 11.419/2006, \nCONFORME IMPRESSÃO À MARGEM DIREITA\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 0013922-19.2007.8.26.0405 e código fhBAip80.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 14/07/2022 às 16:27 .\nfls. 449",
+      "has_file": true
+    },
+    {
+      "case_id": "0013922-19.2007.8.26.0405",
+      "title": "Sentença - Execução Hipotecária SFH",
+      "judge": "ANTONIO MARCELO CUNZOLO RIMOLA",
+      "court": "5ª Vara Cível - Foro de Osasco",
+      "source_url": "https://esaj.tjsp.jus.br/cjpg/",
+      "local_path": "C:\\Users\\100OS\\Documents\\Codex\\2026-09-20\\ent-o-eu-t-tentando-criar\\outputs\\demo\\96c5168f-dd67-47bb-972a-350c8723e5d4\\documents\\03_doc_87336637.pdf",
+      "sha256": "7f6022536d8cea04015c807f4826a36d2cf0264f91536c75f9f1ed91e26ccbbc",
+      "similarity_reason": "coletado e baixado no TJSP",
+      "pages": 11,
+      "chars": 29759,
+      "preview": "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1002937-34.2022.8.26.0506\nClasse - Assunto Procedimento Comum Cível - Indenização por Dano Moral\nRequerente: Aparecida Ismeria Junqueira da Silva\nRequerido: União Nacional dos Servidores Públicos do Brasil- Unibrasil\nPrioridade Idoso\nTramitação prioritária\nJustiça Gratuita\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nVistos.\nTrata-se de demanda declaratória de inexistência de débito, c.c. pedido \ncominatório para abstenção de cobrança/desconto, bem como pedidos de repetição do indébito e \nde indenização por danos morais, proposta APARECIDA ISMÉRIA DA SILVA em face \nda UNIBRASIL - UNIÃO BRASILEIRA DE APOSENTADOS DA PREVIDÊNCIA. Narra, \na autora, que a requerida lançou em seu benefício previdenciário descontos sob a rubrica \n“CONTRIBUIÇÃO UNIBRASIL” no valor de R$ 20,90, a contar de janeiro de 2020. Sustenta \nque a conduta da ré é ilegal e abusiva, pois...",
+      "full_text": "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 1\nSENTENÇA\nProcesso Digital nº: 1002937-34.2022.8.26.0506\nClasse - Assunto Procedimento Comum Cível - Indenização por Dano Moral\nRequerente: Aparecida Ismeria Junqueira da Silva\nRequerido: União Nacional dos Servidores Públicos do Brasil- Unibrasil\nPrioridade Idoso\nTramitação prioritária\nJustiça Gratuita\nJuiz(a)\n \nde\n \nDireito:\n \nDr(a).\n \nANTONIO\n \nMARCELO\n \nCUNZOLO\n \nRIMOLA\nVistos.\nVistos.\nTrata-se de demanda declaratória de inexistência de débito, c.c. pedido \ncominatório para abstenção de cobrança/desconto, bem como pedidos de repetição do indébito e \nde indenização por danos morais, proposta APARECIDA ISMÉRIA DA SILVA em face \nda UNIBRASIL - UNIÃO BRASILEIRA DE APOSENTADOS DA PREVIDÊNCIA. Narra, \na autora, que a requerida lançou em seu benefício previdenciário descontos sob a rubrica \n“CONTRIBUIÇÃO UNIBRASIL” no valor de R$ 20,90, a contar de janeiro de 2020. Sustenta \nque a conduta da ré é ilegal e abusiva, pois nunca contratou quaisquer serviços com a parte \nrequerida que autorizassem referidos descontos. Diante desse fato, postula procedência dos \npedidos iniciais para o fim de declarar a inexistência do débito e determinar que a ré se abstenha \nde efetuar qualquer cobrança/desconto, sob pena de multa diária. Pleiteou ainda a condenação \nda ré à repetição dos valores descontados e ao pagamento de indenização, a título de danos \nmorais, no valor de R$ 10.000,00. Deu à causa o valor de R$ 10.020,90, juntando os \ndocumentos de fls. 28/122.\nCitada (fl. 135), a requerida apresentou contestação às fls. 23/36 e, em \npreliminares, articulou com a falta de interesse de agir, ao argumento de que o INSS bloqueou \nos repasses dos valores à requerida. Pleiteou ainda a concessão dos benefícios da justiça gratuita \ne a retificação do polo passivo para constar UNIÃO BRASILEIRA DE APOSENTADOS DA \nPREVIDÊNCIA UNIBAP. No mérito, teceu considerações acerca da boa-fé-objetiva e \ncomentários sobre o instituto do “duty to mitigate the loss”, alegando que agiu de boa-fé e \nsuscitando sobre os diversos meios para solução dos conflitos de consumo. Defendeu que \ncompete ao INSS devolver os valores descontados do benefício da autora. Sustentou que não \nhouve a caracterização de danos morais, afirmando que o dano alegado é inexistente. Pelo \nprincípio da eventualidade, pugnou pela redução da indenização a título de danos morais \nconsiderando o significativo impacto da pandemia em sua capacidade financeira. Por fim, \nrequereu o acolhimento das preliminares arguidas ou, alternativamente, a improcedência dos \npedidos. Juntou documentos (fls. 58/65).\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 181\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 2\nÀs fls. 167/175, impugnação do autora.\nExauriu-se a instrução sem outras provas.\nÉ o relatório.\nFundamento e decido.\nNo mais, indefiro os benefícios da assistência judiciária gratuita, \npleiteados pela ré.\nRegistro que os benefícios da assistência judiciária gratuita têm por \nobjetivo viabilizar o acesso ao Judiciário àqueles que não podem, sem sacrificar o próprio \nsustento, arcar com as custas do processo.\nÉ pacífica na jurisprudência essa extensão às pessoas jurídicas, desde \nque comprovada a impossibilidade de dispor de numerário suficiente para os custos da \ndemanda. Nesse sentido, também dispôs o Novo Código de Processo Civil em seu artigo 98.\nEm conclusão, para o deferimento da gratuidade da justiça a pessoa \njurídica, faz-se necessária a comprovação, de modo satisfatório, da alegada hipossuficiência \npara arcar com as custas processuais.\nNesse sentido, o Enunciado 481 da Súmula do STJ , in verbis : “Faz \njus ao benefício da justiça gratuita a pessoa jurídica com ou sem fins lucrativos que demonstrar \nsua impossibilidade de arcar com os encargos processuais”.\nTodavia, no presente caso, não há nos autos qualquer prova da carência \neconômica da ré. Conquanto tenha apontado ser entidade sem fins lucrativos não comprovou \nsua hipossuficiência financeira, requisito objetivo indispensável para concessão do benefício \npleiteado. Com efeito, tão somente os extratos de contas correntes (fls. 60/65), não se mostram \nsuficientes para retratar a real situação patrimonial e financeira da entidade, ou a \nimpossibilidade de recolher as custas e demais despesas deste processo. A parte poderia ter se \nvalido de balancetes ou outros demonstrativos financeiros, que pudessem melhor elucidar sua \ncapacidade econômica e, no entanto, deixou de fazê-lo, não havendo se falar em presunção de \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 182\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 3\nhipossuficiência de pessoa jurídica, como já dito.\nAssim, o fato de ser uma associação civil sem fins econômicos, não é \nsuficiente a comprovar a insuficiência de recursos e não significa que não possa arcar com os \nônus da sucumbência. Neste sentido:\n“AGRAVO DE INSTRUMENTO. Irresignação em face da decisão que \nindeferiu o pedido de justiça gratuita. Descabimento. O simples fato \nda associação não possuir fins lucrativos não é apto a comprovar a \ninsuficiência de recursos da agravante. Pertinência da comprovação \nda vulnerabilidade econômica, nos termos do art. 5º, LXXIV, CF. Não \nhá elementos capazes de demonstrar a situação de miserabilidade. \nConceder justiça gratuita àqueles que não são comprovadamente \nnecessitados seria desvirtuar as razões do benefício. Precedente do \nSTJ. Recurso improvido1”.\nDesse modo, o pedido da ré não comporta acolhimento.\nNo que tange à preliminar de carência de ação por falta de interesse \nprocessual, sem razão a requerida, pois a autora pretende, além da cessação dos descontos, a \ncondenação da requerida à devolução dos valores descontados, além de indenização por danos \nmorais.\nDesta forma, caracterizada a conflituosidade entre as partes, necessária \na intervenção judicial, em ordem a fazer concluir que presente o interesse de agir, na \nmodalidade \"necessidade\". Assim, a pertinência ou não dos pleitos formulados enseja, a \nprincípio, a apreciação de seu mérito.\nPor fim, consigno que o Código de Defesa do Consumidor é \nperfeitamente aplicável à espécie, vez que as partes se enquadram nas figuras jurídicas definidas \npelos artigos 2º e 3º da Lei 8.078/90. De um lado temos a requerida, a prestadora de serviços no \nmercado de consumo, que, ainda que se trate de associação sem fins lucrativos, apresenta-se \ncomo pessoa jurídica que oferece facilidades no mercado de consumo organizado e angaria \nrecursos para sua própria manutenção, dependendo, em último caso, das filiações e das \nmensalidades de seus membros para manutenção de suas atividades essenciais. Até porque não \nhá um único serviço concreto que teria sido prestado, pela associação à autora, e que justificaria \n1 - TJSP, Agravo de Instrumento nº 2122075-17.2017.8.26.0000 , Órgão julgador: 5ª Câmara de \nDireito Privado, da Comarca de Itapetininga, Relator: James Siano, Data do Julgamento: \n03/09/2017;\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 183\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 4\nseu atuar, em prol dos supostos aposentados. De outro lado, por sua vez, se encontra o \nconsumidor hipossuficiente financeira e tecnicamente - a autora aposentada, pessoa física que \nsupostamente adquiriu um serviço como destinatário final, no conceito de consumidor final.\nPortanto, a autora deve ser amparada pela legislação consumerista.\nOs pedidos iniciais são procedentes, em parte.\nTrata-se de demanda em que a autora pleiteia a declaração \nde inexistência de débito, descontado indevidamente em seu benefício previdenciário. Pleiteia \nainda a condenação da ré na obrigação de fazer consistente na cessação dos descontos, à \nrepetição do indébito dos valores descontados indevidamente e indenização por danos morais.\nDa análise da prova documental colacionada aos autos, extrai-se que, a \npartir da competência 01/2022 a requerida procedeu ao desconto em benefício previdenciário da \nautora sob a rubrica “CONTRIBUIÇÃO UNIBRASIL”.\nAlega a autora que jamais entabulou qualquer contrato com a \nrequerida, que justificasse os mencionados descontos.\nComo já ressaltado em preliminares, a relação jurídica entre as partes é \nde natureza consumerista, a exigir a aplicação do Código de Defesa do Consumidor.\nRessalte-se que o artigo 14, de sobredito diploma, estabelece a \nresponsabilidade dos fornecedores pelos danos gerados ao consumidor em virtude de defeitos na \nprestação de serviços.\nAssim, de acordo com os ditames da legislação consumerista, a \nresponsabilidade do fornecedor pelos danos causados ao consumidor decorrentes de fato ou de \nvício e defeito nos produtos e serviços é de natureza objetiva, prescindindo, assim, da análise de \nculpa.\nSurge daí que, em ambiente de relação de consumo, é do fornecedor o \nônus de provar a regularidade da prestação de seus serviços e eventual causa excludente do \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 184\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 5\nartigo 14, § 3º, do CDC. Nesse sentido:\n“O ônus da prova das excludentes da responsabilidade do fornecedor \nde serviços, previstas no art. 14, § 3º, do CDC, é do fornecedor, por \nforça do art. 12, § 3º, também do CDC2”.\nVale assinalar que essa obrigação só é elidida se comprovada alguma \nexcludente de responsabilidade, como a culpa exclusiva da vítima ou de terceiro ou que não \nocorreu defeito na prestação do serviço (artigo 14, § 3º, incisos I e II, Código de Defesa do \nConsumidor).\nNessa esteira, ressalto ainda que, nos termos daquilo que determina o \nartigo 373, inciso II, do Novo Código de Processo Civil, competia à parte ré comprovar fato \nextintivo, modificativo ou impeditivo do direito da autora, ou seja, a regularidade da \ncontratação e dos descontos efetuados em seu benefício previdenciário e que não poderiam ter \nsido decorrente de falha na prestação de seus serviços.\nAliás, neste ponto é importante ressaltar que seria impossível para a \nautora comprovar a existência de fato negativo, ou seja, de que não firmou contrato com a ré.\nDesse modo, se à autora é impossível tal prova, por outro lado, a \nprovidência seria simples à requerida, que deve contar com as informações necessárias em seu \nbanco de dados. Além disso, por força do princípio da carga dinâmica das provas, absorvida \npelo Novo Código de Processo Civil, que impõe o ônus da prova à parte que estiver em \nmelhores condições de produzi- la, era exigível da ré que produzisse tal prova.\nAssim tal ônus era da ré, que dele não se desincumbiu. Vejamos.\nA ré não trouxe qualquer documento a comprovar a associação da \nautora aos seus quadros, de modo a confirmar a validade de vínculo entre as partes que \njustificasse os descontos realizados mensalmente no benefício da autora. Com efeito, cuidando-\nse de filiação com autorização de desconto em benefício previdenciário, imprescindível a prova \nda válida formalização do contrato e a exibição da via original do instrumento respectivo, \ndevidamente assinado pelo contratante; o que, no entanto, não foi feito.\n2 - (STJ-3ª Turma, REsp 685662/RJ , rel. Min. Nancy Andrighi, v.u., j. 10/11/2005, DJ \n05/12/2005 pg. 323;\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 185\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 6\nNão constam dos autos quaisquer documentos que comprovem a \nfiliação da requerente. A requerida sequer juntou contrato de adesão à associação devidamente \nregularizado e assinado pela requerente, a fim de exteriorizar a manifestação livre e consciente \nde vontade associativa. Não apresentou documentos aptos a comprovar que a autora \nefetivamente autorizou os descontos em seu benefício previdenciário como associado \ncontribuinte. Não demonstrou a existência da relação jurídica e a manifestação de vontade da \nautora no sentido de contratar os seus serviços. Não demonstrou a contratação ou mesmo a \nautorização da autora para que a operação fosse efetuada, muito embora isso lhe fosse fácil e o \ncontraditório lhe propiciasse tal defesa. Vale lembrar que os documentos devem acompanhar a \ncontestação, nos termos do artigo 434, do Código de Processo Civil.\nAssim, as alegações da requerida, por si só, não são capazes de elidir \nas afirmações iniciais, já que não produziu qualquer outra prova a fim de desconstituir o direito \nda autora.\nConclui-se, portanto, que a requerida não logrou êxito em provar as \nexcludentes do artigo 14, parágrafo 3º, do Código de Defesa do Consumidor, bem como a \nexistência de fato impeditivo, modificativo ou extintivo do direito da autora, como exige o \nartigo 373, II, do Código de Processo Civil, notadamente a existência da relação jurídica por \nmeio de contrato celebrado com a autora.\nPor tudo isso, é forçoso reconhecer que houve desconto indevido.\nE tal situação é caracterizada como defeito no serviço e a requerida \nassume os riscos de tais equívocos, já que é ela quem suporta os riscos de sua atividade. Trata-\nse de risco inerente à atividade explorada e não pode pretender transferir à autora o risco da \noperação, que certamente lhe é vantajosa e lucrativa.\nNesse sentido, necessário reconhecer a irregularidade dos descontos \nem benefício previdenciário da autora registrados sob a rubrica “CONTRIBUIÇÃO \nUNIBRASIL”.\nPor consequência, o pedido declaratório de inexistência do débito \né procedente.\nCom relação à repetição do indébito, observo que houve, de fato, a \ncobrança/desconto no benefício da autora do valor de R$ 20,90, portanto, houve desconto \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 186\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 7\nindevido e não autorizado pela parte autora.\nAssim, constatada a irregularidade dos descontos, a requerente faz jus \nà repetição, de maneira simples, ante a ausência de má fé, dos valores efetivamente \ndescontados, a serem demonstrados em fase de cumprimento de sentença.\nRelativamente aos danos morais pleiteados o pedido é improcedente.\nÉ certo que o dano moral corresponde à consequência da prática de um \nato capaz a atingir os direitos da personalidade. No entanto, para que excessos e abusos sejam \nevitados em demandas que, sob a alegação de dano moral, busquem um enriquecimento \ninjustificado, mister se faz a distinção entre o dano moral e o mero aborrecimento.\nNesse viés, é a orientação doutrinária:\n“Nessa linha de princípio, só deve ser reputado como dano moral a \ndor, o vexame, sofrimento ou humilhação que, fugindo à normalidade, \ninterfira intensamente no comportamento psicológico do indivíduo, \ncausando-lhe aflições, angústia e desequilíbrio em seu bem-estar. \nMero dissabor, aborrecimento, mágoa, irritação ou sensibilidade \nexacerbada estão fora da órbita do dano moral, porquanto, além de \nfazerem parte da normalidade do nosso dia a dia, no trabalho, no \ntrânsito, entre os amigos e até no ambiente familiar, tais situações não \nsão intensas e duradouras, a ponto de romper o equilíbrio psicológico \ndo indivíduo. Se assim não se entender, acabaremos por banalizar o \ndano moral, ensejando ações judiciais em busca de indenizações pelos \nmais triviais aborrecimentos. Dor, vexame, sofrimento e humilhação \nsão consequência e não causa. Assim como a febre é o efeito de uma \nagressão orgânica, dor, vexame e sofrimento só poderão ser \nconsiderados dano moral quando tiverem por causa uma agressão à \ndignidade de alguém3”.\n“Tanto doutrina e jurisprudência sinalizam para o fato de que o dano \nmoral suportado por alguém não se confunde com os meros \ntranstornos ou aborrecimentos que o cidadão sofre no diaadia. Isso, \nsob pena de colocar em descrédito a própria concepção da \nresponsabilidade civil. Cabe ao juiz, analisando o caso concreto e \ndiante da sua experiência apontar se a reparação imaterial é cabível \n3  (Cavalieri Filho)\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 187\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 8\nou não. Nesse sentido, foi aprovado o Enunciado n. 159 do Conselho \nda Justiça Federal na III Jornada de Direito Civil, pelo qual o dano \nmoral não se confunde com os meros aborrecimentos decorrentes de \nprejuízo material4”.\nO que se extrai da leitura dos excertos acima transcritos é que meros \ntranstornos não ensejam a indenização por danos morais, já que refletem problemas do \ncotidiano, sem atingir a esfera dos direitos da personalidade da vítima.\nAinda nesse viés, nos ensina Fábio Ulhôa Coelho que:\n“em suma, a indenização por danos morais, será instituto tanto mais \nprestigiado quanto menos for desvirtuado. Não interessa à sociedade \nou à economia que dissabores, desconfortos, aborrecimentos ou \napoquentação gerem custos socializáveis. Definitivamente, não \ninteressa criarmos um mundo de não-me-toques”.\nNa hipótese dos autos, ficou demonstrada a irregularidade dos \ndescontos. Nesse contexto, caracterizado o ato ilícito. Entretanto, verifico que os fatos \nafirmados não excedem o dissabor havido face ao evento, que se restringiu aos descontos em \nbenefício previdenciário da autora, sem que se tivesse constado que o seu nome teria sido \ninscrito nos órgãos de proteção ao crédito. E mais, os débitos ocorridos não levaram à \ndevolução de cheques ou mesmo a saldo negativo. Além disso, são valores de pequena monta \nque não comprometem a renda da autora.\nHá que se atentar para o fato de que nem todo mal estar é capaz de \nproduzir danos morais. Para tanto, é necessário que o dissabor experimentado revista-se de \ngravidade suficiente para que se possa vislumbrar lesão a algum direito fundamental da pessoa, \nvez que meros transtornos não ensejam a indenização por danos morais, eis que refletem \nproblemas do cotidiano, sem repercutir na esfera dos direitos da personalidade da autora. No \nponto, a nulidade contratual, por si só, é insuficiente para a caracterização da lesão ao direito de \npersonalidade. Assim, a situação está distante de violação a direito da personalidade, ou ofensa \nà dignidade da pessoa humana, não havendo a ocorrência de danos morais.\nE, a despeito da alegação de perda de seu tempo livre, certo é que \ndeterminadas situações cotidianamente enfrentadas em relações negociais acarrretam, \nrealmente, a necessidade de disposição do tempo para que seja logrado êxito na busca da \nsolução.\n4 \" (Flávio Tartuce)\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 188\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 9\nNo entanto, tal como na hipótese, a consequência não é de tal \ngravidade a margear condenação à indenização de danos extrapatrimoniais. Enfim, da situação \nfática não se infere a ocorrência de transtornos anormais na tranquilidade da pessoa ou abalo \npsíquico grave ou dano a sua dignidade pessoal.\nEm suma, o que se tem, no caso em questão, é situação que gera mero \ndissabor ou aborrecimento, mas não dano moral indenizável. O acontecimento vivenciado pela \nautora não extrapolou o limite dos aborrecimentos a que todos nós estamos diariamente sujeitos. \nInexistiu afronta à sua honra, dignidade ou imagem.\nNesse sentido:\n“AÇÃO DECLARATÓRIA DE INEXISTÊNCIA DE RELAÇÃO \nJURÍDICA C.C. PEDIDO DE INDENIZAÇÃO POR DANOS MORAIS. \nSentença de parcial procedência. Declaração de inexistência de \nrelação jurídica. Rejeição da pretensão condenatória. Simples \ncobrança de débitos decorrentes de relação jurídica posteriormente \ndeclarada inexistente. Não comprovação de danos morais. Dissabores \ne aborrecimento normais do cotidiano. Ausência de efetiva \nnegativação. Danos morais não configurados. SENTENÇA MANTIDA. \nRECURSO DESPROVIDO5”;\n“APELAÇÃO - AÇÃO DE INDENIZAÇÃO POR DANOS MATERIAIS E \nMORAIS POR COBRANÇA INDEVIDA E PEDIDO DE TUTELA \nANTECIPADA EMPRESTIMO CONSIGNADO - INSS - \nREFINANCIAMENTO DO VALOR COM TROCO - FRAUDE \nPERPETUADA POR TERCEIROS - SENTENÇA DE PARCIAL \nPROCEDÊNCIA - RECURSO - DANO MORAL - AUSENTE - \nCONDUTA QUE NÃO ULTRAPASSOU O MERO ABORRECIMENTO \nAUSENCIA DE RESTRIÇÃO CREDITICIA - FATO DO COTIDIANO \nMODERNO - SENTENÇA MANTIDA RECURSO DESPROVIDO6”.\nÀ ausência de qualquer abalo em seus direitos da personalidade, deixo \nde acolher o pedido de indenização por danos morais, formulado pela autora.\nOs demais argumentos são incapazes de refutar os fundamentos aqui \nadotados, razão pela qual ficam integralmente afastados. \n5 - TJ/SP - Apelação nº 1020005-67.2015.8.26.0562 , Comarca de Santos, 25ª Câmara de Direito \nPrivado, Rel. Des. Azuma Nishi, Dj. 06/04/2016;\n6 - TJ/SP - Apelação nº 0005279-46.2013.8.26.0572 , Comarca de São Joaquim da Barra, 14ª \nCâmara de Direito Privado, Rel. Des. Carlos Abrão, Dj. 06/04/2016;\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 189\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 10\nPara evitar futuros questionamentos desnecessários observo que tenho \npor expressamente ventilados, neste grau de jurisdição, todos os dispositivos legais e \nconstitucionais citados no feito.\nSaliento ainda que a função do julgador é decidir a lide de modo \nfundamentado e objetivo, portanto, desnecessário o enfrentamento exaustivo de todos os \nargumentos elaborados pelas partes pelo que, por fim, anota-se que outros argumentos \neventualmente deduzidos no processo não são capazes de, em tese, infirmar a presente \nconclusão. \nAnoto, por fim, que a devolução do valor indevidamente descontado \nbasta para sanar o prejuízo experimentado.\nÀ evidência de todo o exposto e considerando o mais que dos autos \nconsta, JULGO PROCEDENTES em parte os pedidos formulados na inicial para o fim de \nDECLARAR a inexistência do débito no que se refere ao(s) desconto(s) efetuado(s) no \nbenefício previdenciário da autora sob a rubrica “CONTRINUIÇÃO \nUNIBRASIL”, DETERMINAR que a ré se abstenha de efetuar qualquer cobrança/desconto sob \nrespetiva rubrica e CONDENAR a requerida a restituir à autora, de maneira simples, os \nvalores descontados do benefício previdenciário, sob respectiva rubrica, a serem demonstrados \nem fase de cumprimento de sentença.\nO valor devido será atualizado monetariamente pelos índices da Tabela \nPrática do Tribunal de Justiça incidente a partir de cada desconto e acrescido de juros de mora \nde 1% ao mês, da citação.\nEm consequência, julgo EXTINTA A FASE DE CONHECIMENTO, \ncom resolução de mérito, com base no artigo 487, inciso I, do Código de Processo Civil.\nUma vez que a autora foi sucumbente em maior parte (improcedência \ndo pedido de dano moral no valor de 10 mil reais), nos termos dos artigos 85, parágrafo 2º, \ne 86, parágrafo único, do Código de Processo Civil, condeno-a ao pagamento das custas, \ndespesas processuais e honorários advocatícios que fixo em R$ 800,00, ficando suspenso a teor \ndo disposto no art. 98, § 3º, do CPC.\nObservo que, para o caso de recurso, o recorrente deverá observar os \ntermos da Lei Estadual 11.608/2003 e o Provimento nº 577/97, do Egrégio Conselho Superior \nda Magistratura.\nConsidera-se prequestionada toda a matéria ventilada neste recurso, \nsendo dispensável a indicação expressa de artigos de lei e, consequentemente, desnecessária a \ninterposição de embargos declaratórios com tal finalidade e que, sua oposição fora das hipóteses \nlegais e/ou com postulação meramente infringente ensejará, se o caso for, a imposição da multa \nprevista pelo artigo 1026, § 2º, NCPC.\nFicam as partes advertidas, desde logo, que qualquer alteração de \nendereço, no curso do processo, deverá ser comunicada ao Juízo, sob pena de reputarem-se \neficazes as intimações enviadas ao local anteriormente indicado, em atenção à regra do artigo 274, \nparágrafo único do Código de Processo Civil. \nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 190\n\n--- PÁGINA ---\n\nTRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO\nCOMARCA DE RIBEIRÃO PRETO\nFORO DE RIBEIRÃO PRETO\n5ª VARA CÍVEL\nRUA ALICE ALEM SAAD, 1010, Ribeirão Preto - SP - CEP 14096-570\nHorário de Atendimento ao Público: das 13h00min às 17h00min\n      \n1002937-34.2022.8.26.0506 - lauda 11\nPara fins de recurso, excetuada a hipótese de gratuidade, deverá ser \nrecolhido o preparo de 4% sobre o valor da condenação, se houver, ou, caso não haja, ou não seja \npossível desde logo apurar o montante, sobre o valor atualizado da causa, observado o patamar \nmínimo de 5 UFESPs. Providencie a serventia o cálculo.\nDispensado o registro, nos termos do art. 72, § 6º, das Normas de \nServiço da Egrégia Corregedoria Geral da Justiça do Estado de São Paulo. \nSentença publicada com a liberação nos autos digitais. \nIntimem-se. Cumpra-se. \nRibeirão Preto, 22 de maio de 2023.\nDOCUMENTO ASSINADO DIGITALMENTE NOS TERMOS DA LEI 11.419/2006, \nCONFORME IMPRESSÃO À MARGEM DIREITA\nPara conferir o original, acesse o site https://esaj.tjsp.jus.br/pastadigital/pg/abrirConferenciaDocumento.do, informe o processo 1002937-34.2022.8.26.0506 e código IvMLBX6j.\nEste documento é cópia do original, assinado digitalmente por ANTONIO MARCELO CUNZOLO RIMOLA, liberado nos autos em 22/05/2023 às 11:28 .\nfls. 191",
+      "has_file": true
+    }
+  ]
+};
+
+    function openFullTextModal(index) {
+      const item = demoData.docs[index];
+      if (!item) return;
+      document.getElementById('modal-title').innerText = 'Processo: ' + item.case_id + ' — ' + item.title;
+      document.getElementById('modal-body').innerText = item.full_text || item.preview || '(Sem conteúdo de texto extraído)';
+      document.getElementById('text-modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('text-modal').classList.remove('active');
+    }
+
+    document.getElementById('text-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    function copyManifest() {
+      const text = document.getElementById('manifest-code').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Manifesto JSON copiado para a área de transferência!');
+      });
+    }
+  </script>
+</body>
+</html>
