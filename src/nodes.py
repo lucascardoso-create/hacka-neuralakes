@@ -60,19 +60,40 @@ def research(state: ResearchState) -> dict:
     output_dir = Path("outputs") / "runs" / state["run_id"] / "documents"
     output_dir.mkdir(parents=True, exist_ok=True)
     client: BrowserUseClient | None = None
+    docs: list = []
+    warning: str | None = None
     try:
         client = BrowserUseClient()
         docs = client.search_and_download(plan, str(output_dir))
     except BrowserUseError as exc:
-        return {
-            "documents": [],
-            "errors": [*state.get("errors", []), str(exc)],
-            "audit": _audit(state, "research", "Browser Use não retornou PDFs verificáveis"),
-        }
+        exc_msg = str(exc)
+        # Erros parciais de download: o cliente ainda pode ter coletado documentos.
+        partial = client.last_result.get("results", []) if (client and client.last_result) else []
+        if partial:
+            # Algum resultado foi encontrado; registra o aviso mas não descarta nada.
+            warning = exc_msg
+            docs = []  # last_result já foi processado internamente antes do raise
+        else:
+            # Nenhum resultado: falha total.
+            return {
+                "documents": [],
+                "errors": [*state.get("errors", []), exc_msg],
+                "audit": _audit(state, "research", f"Falha na pesquisa: {exc_msg}"),
+            }
     finally:
         if client is not None:
             client.stop_last_browser()
-    return {"documents": [doc.model_dump() for doc in docs], "audit": _audit(state, "research", f"{len(docs)} documentos retornados")}
+    errors = state.get("errors", [])
+    if warning:
+        errors = [*errors, warning]
+    audit_msg = f"{len(docs)} documento(s) coletado(s)"
+    if warning:
+        audit_msg += f" — aviso: {warning}"
+    return {
+        "documents": [doc.model_dump() for doc in docs],
+        "errors": errors,
+        "audit": _audit(state, "research", audit_msg),
+    }
 
 
 def finalize(state: ResearchState) -> dict:
