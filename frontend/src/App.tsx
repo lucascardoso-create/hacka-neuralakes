@@ -195,6 +195,7 @@ function App() {
   const [nodes, setNodes] = useState<FlowNode[]>(flowNodes)
   const [edges, setEdges] = useState<Array<[NodeId, NodeId]>>(initialEdges)
   const [selectedNode, setSelectedNode] = useState<NodeId>('intake')
+  const [selectedByUser, setSelectedByUser] = useState(false)
   const [mode, setMode] = useState<RunMode>('fixture')
   const [caseTitle, setCaseTitle] = useState('Ação revisional · contrato bancário')
   const [representedSide, setRepresentedSide] = useState('empresa ré')
@@ -240,37 +241,34 @@ function App() {
   const graphOrder = useMemo(() => executionOrder(nodes, edges), [nodes, edges])
   const graphValidation = useMemo(() => validateGraph(nodes, edges), [nodes, edges])
 
+  const selectNode = (nodeId: NodeId) => {
+    setSelectedNode(nodeId)
+    setSelectedByUser(true)
+  }
+
   const addNode = (template: NodeTemplate) => {
     const id = `${template.operation || 'node'}_${crypto.randomUUID().slice(0, 6)}`
     const column = nodes.length % 6
     const row = Math.floor(nodes.length / 6)
     const newNode: FlowNode = { ...template, id, x: 54 + column * 198, y: 204 + row * 142 }
-    const reachable = new Set<NodeId>(['intake'])
-    let changed = true
-    while (changed) {
-      changed = false
-      for (const [from, to] of edges) {
-        if (reachable.has(from) && !reachable.has(to)) {
-          reachable.add(to)
-          changed = true
-        }
-      }
-    }
-    const previous = [...nodes].reverse().find((node) => reachable.has(node.id))
+    const previous = selectedByUser ? nodeById[selectedNode] : undefined
     setNodes((current) => [...current, newNode])
     if (previous) setEdges((current) => [...current, [previous.id, id]])
     setSelectedNode(id)
+    setSelectedByUser(false)
+    setConnectionMode(false)
+    setConnectionSource(null)
     setShowNodePicker(false)
     setCompletedNodes((current) => {
       const next = new Set(current)
       next.delete(id)
       return next
     })
-    setToast(`${template.label} adicionado e conectado após ${previous?.label || 'a Entrada do caso'}.`)
+    setToast(previous ? `${template.label} adicionado e conectado após ${previous.label}.` : `${template.label} adicionado solto. Selecione uma origem para conectá-lo.`)
   }
 
   const startConnectionFrom = (nodeId: NodeId) => {
-    setSelectedNode(nodeId)
+    selectNode(nodeId)
     setConnectionMode(true)
     setConnectionSource(nodeId)
     setToast('Origem selecionada. Clique no destino no canvas ou na lista de componentes.')
@@ -278,7 +276,7 @@ function App() {
 
   const handleNodeClick = (nodeId: NodeId) => {
     if (suppressNodeClickRef.current) return
-    setSelectedNode(nodeId)
+    selectNode(nodeId)
     if (!connectionMode) return
     if (!connectionSource) {
       setConnectionSource(nodeId)
@@ -309,7 +307,7 @@ function App() {
 
   const handlePortClick = (event: React.MouseEvent, nodeId: NodeId, port: 'input' | 'output') => {
     event.stopPropagation()
-    setSelectedNode(nodeId)
+    selectNode(nodeId)
     if (port === 'output') {
       startConnectionFrom(nodeId)
       return
@@ -380,6 +378,7 @@ function App() {
       setConnectionMode(false)
     }
     setSelectedNode(nextNode?.id || 'intake')
+    setSelectedByUser(false)
     setToast(bridges.length ? 'Componente removido e o fluxo foi religado.' : 'Componente removido e conexões associadas apagadas.')
   }
 
@@ -413,6 +412,17 @@ function App() {
     }
     nodeDragRef.current = null
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement
+    if (target.closest('.flow-node, .canvas-selection-panel, .canvas-badge, .canvas-flow-status')) return
+    setSelectedByUser(false)
+    if (connectionMode) {
+      setConnectionMode(false)
+      setConnectionSource(null)
+      setToast('Seleção de conexão cancelada.')
+    }
   }
 
   useEffect(() => {
@@ -581,11 +591,11 @@ function App() {
             {nodes.map((node) => {
               const Icon = node.icon
               const state = statusForNode(node.id, activeNode, completedNodes, run?.status === 'blocked')
-              return <button key={node.id} className={`node-list-item ${selectedNode === node.id ? 'selected' : ''} ${connectionSource === node.id ? 'connection-source' : ''}`} onClick={() => handleNodeClick(node.id)}>
+              return <button key={node.id} className={`node-list-item ${selectedByUser && selectedNode === node.id ? 'selected' : ''} ${connectionSource === node.id ? 'connection-source' : ''}`} onClick={() => handleNodeClick(node.id)}>
                 <span className="node-list-icon" style={{ color: node.color, background: `${node.color}16` }}><Icon size={15} /></span>
                 <span className="node-list-copy"><strong>{node.label}</strong><span>{node.sublabel}</span></span>
                 <span className={`mini-status ${state}`} />
-                {node.id !== 'intake' && <span className="node-list-remove" role="button" tabIndex={0} aria-label={`Remover ${node.label} do painel`} title="Remover do painel" onClick={(event) => { event.stopPropagation(); removeNode(node.id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); removeNode(node.id) } }}><Trash2 size={12} /></span>}
+                <span className={`node-list-remove ${node.id === 'intake' ? 'disabled' : ''}`} role="button" tabIndex={0} aria-disabled={node.id === 'intake'} aria-label={node.id === 'intake' ? 'Entrada do caso não pode ser removida' : `Remover ${node.label} do painel`} title={node.id === 'intake' ? 'Trigger obrigatório da spec' : 'Remover do painel'} onClick={(event) => { event.stopPropagation(); removeNode(node.id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); removeNode(node.id) } }}><Trash2 size={12} /></span>
               </button>
             })}
           </div>
@@ -603,14 +613,14 @@ function App() {
             <div className="toolbar-right"><span className="zoom-label">100%</span><button className="toolbar-icon"><Search size={15} /></button><button className="toolbar-icon"><LockKeyhole size={15} /></button></div>
           </div>
 
-          <div className="canvas-area">
+          <div className="canvas-area" onClick={handleCanvasClick}>
             <div className="canvas-grid" />
             <div className="canvas-badge"><Activity size={13} /> {nodes.length} nodes <span /> <Network size={13} /> {edges.length} connections</div>
             <div className={`canvas-flow-status ${graphValidation.errors.length || graphValidation.warnings.length ? 'invalid' : runIsActive ? 'running' : ''}`}><span />{graphValidation.errors.length ? 'Fluxo inválido' : graphValidation.warnings.length ? 'Componentes desconectados' : activeNode ? `Executando: ${nodeById[activeNode]?.label || activeNode}` : run?.status || 'Fluxo pronto'}</div>
-            <div className="canvas-selection-panel">
+            {selectedByUser ? <div className="canvas-selection-panel">
               <div className="canvas-selection-copy"><span className="eyebrow">Componente selecionado</span><strong>{selected.label}</strong><span>{statusForNode(selectedNode, activeNode, completedNodes, run?.status === 'blocked')} · {selected.connector || 'local'}</span></div>
               <div className="canvas-selection-actions"><button className="selection-action" onClick={() => startConnectionFrom(selectedNode)}><GitBranch size={13} /> Conectar</button>{(graphValidation.errors.length || graphValidation.warnings.length) > 0 && <button className="selection-action" onClick={repairGraph}><RotateCcw size={13} /> Reparar</button>}<button className="selection-action danger" onClick={() => removeNode(selectedNode)} disabled={selectedNode === 'intake' || loading}><Trash2 size={13} /> Remover do fluxo</button></div>
-            </div>
+            </div> : <div className="canvas-selection-empty">Clique em um componente para editar, conectar ou remover.</div>}
             <svg className="flow-lines" viewBox="0 0 1450 590" preserveAspectRatio="none" aria-hidden="true">
               <defs><linearGradient id="line-gradient" x1="0" x2="1"><stop offset="0%" stopColor="#6d7788" /><stop offset="100%" stopColor="#a28cff" /></linearGradient></defs>
               {edges.map(([from, to]) => {
@@ -627,9 +637,9 @@ function App() {
               {nodes.map((node) => {
                 const Icon = node.icon
                 const state = statusForNode(node.id, activeNode, completedNodes, run?.status === 'blocked')
-                return <button key={node.id} aria-label={`${node.label}. ${state}`} className={`flow-node ${selectedNode === node.id ? 'selected' : ''} ${connectionSource === node.id ? 'connecting-source' : ''} state-${state}`} style={{ left: node.x, top: node.y }} onPointerDown={(event) => handleNodePointerDown(event, node)} onPointerMove={handleNodePointerMove} onPointerUp={handleNodePointerUp} onClick={() => handleNodeClick(node.id)}>
+                return <button key={node.id} aria-label={`${node.label}. ${state}`} className={`flow-node ${selectedByUser && selectedNode === node.id ? 'selected' : ''} ${connectionSource === node.id ? 'connecting-source' : ''} state-${state}`} style={{ left: node.x, top: node.y }} onPointerDown={(event) => handleNodePointerDown(event, node)} onPointerMove={handleNodePointerMove} onPointerUp={handleNodePointerUp} onClick={() => handleNodeClick(node.id)}>
                   <span className="node-port input" title="Conectar entrada" onClick={(event) => handlePortClick(event, node.id, 'input')} /><span className="node-port output" title="Conectar saída" onClick={(event) => handlePortClick(event, node.id, 'output')} />
-                  <span className="flow-node-header"><span className="flow-node-icon" style={{ color: node.color, background: `${node.color}19` }}><Icon size={16} /></span><span className="node-header-actions"><span className="node-state-indicator">{state === 'done' ? <Check size={11} /> : state === 'running' ? <LoaderCircle size={12} className="spin" /> : state === 'blocked' ? <X size={11} /> : <span />}</span>{selectedNode === node.id && node.id !== 'intake' && <span className="node-delete-control" role="button" tabIndex={0} aria-label={`Remover ${node.label} do fluxo`} title="Remover do fluxo" onClick={(event) => { event.stopPropagation(); removeNode(node.id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); removeNode(node.id) } }}><Trash2 size={11} /></span>}</span></span>
+                  <span className="flow-node-header"><span className="flow-node-icon" style={{ color: node.color, background: `${node.color}19` }}><Icon size={16} /></span><span className="node-header-actions"><span className="node-state-indicator">{state === 'done' ? <Check size={11} /> : state === 'running' ? <LoaderCircle size={12} className="spin" /> : state === 'blocked' ? <X size={11} /> : <span />}</span>{selectedByUser && selectedNode === node.id && <span className={`node-delete-control ${node.id === 'intake' ? 'disabled' : ''}`} role="button" tabIndex={0} aria-disabled={node.id === 'intake'} aria-label={node.id === 'intake' ? 'Entrada do caso não pode ser removida' : `Remover ${node.label} do fluxo`} title={node.id === 'intake' ? 'Trigger obrigatório da spec' : 'Remover do fluxo'} onClick={(event) => { event.stopPropagation(); removeNode(node.id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); removeNode(node.id) } }}><Trash2 size={11} /></span>}</span></span>
                   <span className="flow-node-title">{node.label}</span><span className="flow-node-subtitle">{node.sublabel}</span>
                   <span className="flow-node-footer"><span>{node.connector}</span><MoreHorizontal size={13} /></span>
                 </button>
