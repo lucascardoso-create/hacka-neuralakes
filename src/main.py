@@ -15,7 +15,7 @@ def main() -> int:
     source.add_argument("--demand", help="Descrição inicial da demanda")
     source.add_argument("--pdf", help="Caminho absoluto ou relativo de uma petição em PDF")
     source.add_argument("--text-file", help="Caminho para texto extraído de uma petição/sentença")
-    parser.add_argument("--document-limit", type=int, default=10, choices=range(1, 11), metavar="1..10", help="Quantidade-alvo de sentenças semelhantes")
+    parser.add_argument("--document-limit", type=int, default=3, choices=range(1, 11), metavar="1..10", help="Quantidade-alvo de sentenças semelhantes; a análise usa todos os PDFs disponíveis")
     parser.add_argument("--offline", action="store_true", help="Não chama o provedor LLM")
     args = parser.parse_args()
     if args.offline:

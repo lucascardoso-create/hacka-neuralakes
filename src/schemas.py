@@ -40,6 +40,29 @@ class AuditEvent(BaseModel):
     message: str
 
 
+class RepetitivenessAssessment(BaseModel):
+    label: Literal["sim", "nao", "inconclusivo"]
+    probability: float | None = Field(default=None, ge=0, le=1)
+    rationale: str
+
+
+class SuccessAssessment(BaseModel):
+    probability: float | None = Field(default=None, ge=0, le=1)
+    rationale: str
+
+
+class DemandAssessment(BaseModel):
+    """Saída experimental; requer revisão jurídica humana."""
+
+    repetitividade: RepetitivenessAssessment
+    exito: SuccessAssessment
+    evidence_ids: list[str] = Field(default_factory=list)
+    evidence_summary: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    review_required: Literal[True] = True
+    calibration_status: Literal["not_validated"] = "not_validated"
+
+
 class ResearchState(TypedDict, total=False):
     run_id: str
     original_demand: str
@@ -50,6 +73,7 @@ class ResearchState(TypedDict, total=False):
     structured_demand: dict
     research_plan: dict
     documents: list[dict]
+    assessment: dict
     errors: list[str]
     audit: list[dict]
     status: Literal["running", "completed", "failed"]
