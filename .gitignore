@@ -6,12 +6,16 @@ __pycache__/
 # Environments
 .env
 .venv
+credentials.json
+token.json
+client_secret*.json
 env/
 venv/
 ENV/
 
 # Data and SQLite
 data/
+outputs/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

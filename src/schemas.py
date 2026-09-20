@@ -85,6 +85,7 @@ class ResearchState(TypedDict, total=False):
     original_demand: str
     source_pdf: str | None
     source_text_file: str | None
+    drive_artifact: dict
     document_limit: int
     source_document: dict
     structured_demand: dict
