@@ -258,13 +258,14 @@ Responda SOMENTE com este JSON (sem texto antes ou depois):
 
         try:
             summary = self._execute_run(primary_model, plan)
-        except BrowserUseError as exc:
+            payload = self._result_json(summary.get("result") or "")
+        except BrowserUseError:
             if primary_model != fallback_model:
                 summary = self._execute_run(fallback_model, plan)
+                payload = self._result_json(summary.get("result") or "")
             else:
                 raise
 
-        payload = self._result_json(summary.get("result") or "")
         self.last_result = payload
         records: list[dict] = payload.get("documents", [])
         if not records:
