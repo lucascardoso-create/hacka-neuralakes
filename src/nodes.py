@@ -49,10 +49,12 @@ def create_research_plan(state: ResearchState) -> dict:
 
 def research(state: ResearchState) -> dict:
     """Nó do Agente de Pesquisa: busca e download dos PDFs no TJSP."""
+    import os
     plan = ResearchPlan.model_validate(state["research_plan"])
     output_dir = Path("outputs") / "runs" / state["run_id"] / "documents"
     agent = ResearchAgent()
-    docs, errors, message = agent.collect(plan, output_dir=output_dir, mode="live")
+    mode = state.get("mode") or os.getenv("RESEARCH_MODE") or ("replay" if os.getenv("OFFLINE_MODE") == "true" else "live")
+    docs, errors, message = agent.collect(plan, output_dir=output_dir, mode=mode)
     return {
         "documents": [doc.model_dump() for doc in docs],
         "errors": [*state.get("errors", []), *errors],

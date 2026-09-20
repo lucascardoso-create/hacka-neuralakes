@@ -40,9 +40,12 @@ def main() -> int:
         help="Quantidade-alvo de sentenças semelhantes; a análise usa todos os PDFs disponíveis",
     )
     parser.add_argument("--offline", action="store_true", help="Não chama o provedor LLM")
+    parser.add_argument("--replay", action="store_true", help="Usa as decisões já baixadas em disco sem chamar o Browser Use ao vivo")
     args = parser.parse_args()
     if args.offline:
         os.environ["OFFLINE_MODE"] = "true"
+    if args.replay:
+        os.environ["RESEARCH_MODE"] = "replay"
     run_id = str(uuid4())
     drive_artifact: dict | None = None
     source_pdf = args.pdf
@@ -76,6 +79,7 @@ def main() -> int:
     state = build_graph().invoke(
         {
             "run_id": run_id,
+            "mode": "replay" if args.replay else "live",
             "original_demand": SYNTHETIC_DEMO_DEMAND if args.synthetic_demo else args.demand or "",
             "source_pdf": source_pdf,
             "source_text_file": args.text_file,

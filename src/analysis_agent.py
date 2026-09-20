@@ -6,6 +6,7 @@ from typing import Sequence
 from pypdf import PdfReader
 from pydantic import BaseModel
 
+from .document_parser import parse_judgment_pdf
 from .llm_provider import LLMProvider
 from .schemas import (
     DemandAssessment,
@@ -23,7 +24,7 @@ class AnalysisAgent:
     """Agente de Análise Jurídica e Avaliação de Evidências.
     
     Responsabilidades:
-    - Extração resiliente de texto dos PDFs das decisões judiciais.
+    - Extração resiliente e estruturada de texto dos PDFs das decisões judiciais.
     - Leitura jurídica comparativa por rubrica multi-eixo (fatos, tese, pedido, fase).
     - Aplicação de regras determinísticas de consolidação (limiar 65% e quórum de 3 sentenças).
     - Emissão de parecer estruturado e síntese executiva com citações e limites.
@@ -32,18 +33,9 @@ class AnalysisAgent:
     def __init__(self, provider: LLMProvider | None = None) -> None:
         self.provider = provider or LLMProvider()
 
-    def extract_text_from_pdf(self, file_path: str, max_characters: int = 16_000) -> str:
-        """Extrai texto de forma segura para análise sem alterar o arquivo original."""
-        pdf_path = Path(file_path)
-        if not file_path or not pdf_path.is_file() or pdf_path.suffix.lower() != ".pdf":
-            return ""
-        try:
-            reader = PdfReader(str(pdf_path))
-            pages_text = [(page.extract_text() or "").strip() for page in reader.pages]
-            full_text = "\n\n".join(t for t in pages_text if t)
-            return full_text[:max_characters].strip()
-        except Exception:
-            return ""
+    def extract_text_from_pdf(self, file_path: str, max_characters: int = 3500) -> str:
+        """Extrai texto e seções-chave da sentença (Relatório, Fundamentação, Dispositivo) via parser."""
+        return parse_judgment_pdf(file_path, max_characters=max_characters)
 
     def evaluate(self, original_demand: str, documents: Sequence[dict]) -> tuple[DemandAssessment, str]:
         """Executa a avaliação jurídica completa da demanda contra a lista de documentos coletados."""
@@ -76,17 +68,23 @@ class AnalysisAgent:
 
         prompt = (
             "Você é um analista jurídico sênior especializado em triagem de demandas de massa.\n"
-            "Leia cada sentença fornecida e compare-a separadamente com a demanda.\n\n"
-            "Para cada sentença (identificada pelo evidence_id), atribua quatro notas de 0 a 1:\n"
-            "  1. factual_match: similaridade dos fatos e contexto material (0 a 1)\n"
-            "  2. legal_match: identidade da tese jurídica e fundamentos de direito (0 a 1)\n"
-            "  3. requested_outcome_match: aderência dos pedidos formulados e tutela pretendida (0 a 1)\n"
-            "  4. procedural_match: compatibilidade da fase processual e rito (0 a 1)\n\n"
-            "Classifique também:\n"
-            "  - material_differences: lista de distinções fáticas ou jurídicas relevantes\n"
-            "  - outcome: resultado do julgamento (favorable, unfavorable, mixed ou unknown)\n"
-            "  - outcome_basis: explicação sintética do resultado\n"
-            "  - excerpts: até 3 excertos literais curtos da decisão que sustentam a análise\n\n"
+            "Leia cada sentença judicial fornecida e compare-a individualmente com a demanda da autora.\n\n"
+            "Retorne um JSON com o campo 'comparisons' contendo a lista de avaliações para cada evidence_id:\n"
+            "{\n"
+            '  "comparisons": [\n'
+            "    {\n"
+            '      "evidence_id": "ID_DO_DOCUMENTO",\n'
+            '      "factual_match": 0.0 a 1.0,\n'
+            '      "legal_match": 0.0 a 1.0,\n'
+            '      "requested_outcome_match": 0.0 a 1.0,\n'
+            '      "procedural_match": 0.0 a 1.0,\n'
+            '      "material_differences": ["diferenca 1", "diferenca 2"],\n'
+            '      "outcome": "favorable" | "unfavorable" | "mixed" | "unknown",\n'
+            '      "outcome_basis": "explicacao do resultado",\n'
+            '      "excerpts": ["trecho 1", "trecho 2"]\n'
+            "    }\n"
+            "  ]\n"
+            "}\n\n"
             f"DEMANDA ORIGINAL:\n{original_demand[:30_000]}\n\n"
             f"DOCUMENTOS JUDICIAIS COLETADOS:\n{evidence}"
         )
@@ -101,16 +99,16 @@ class AnalysisAgent:
             valid_comparisons = [item for item in comparison_set.comparisons if item.evidence_id in valid_ids]
             assessment = self.consolidate_comparisons(valid_comparisons, len(evidence))
             message = f"{len(valid_comparisons)} sentença(s) comparada(s) por rubrica; consolidação determinística aplicada"
-        except RuntimeError as exc:
+        except Exception as exc:
             assessment = DemandAssessment(
                 repetitividade=RepetitivenessAssessment(
                     label="inconclusivo",
                     probability=None,
-                    rationale="A inferência do LLM não pôde ser executada.",
+                    rationale="A inferência do LLM não pôde ser validada.",
                 ),
                 exito=SuccessAssessment(
                     probability=None,
-                    rationale="A inferência do LLM não pôde ser executada.",
+                    rationale="A inferência do LLM não pôde ser validada.",
                 ),
                 limitations=[str(exc)],
             )
