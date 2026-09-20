@@ -93,10 +93,22 @@ const sampleEvents: Event[] = [
 ]
 
 const demoResult: AnalysisResult = {
-  repetitividade: 0.78,
-  exito: 0.64,
+  repetitividade: null,
+  exito: null,
   calibration_status: 'not_validated',
-  evidence_ids: ['ev-01', 'ev-02', 'ev-03'],
+  evidence_ids: ['1023372-41.2022.8.26.0405', '1002937-34.2022.8.26.0506', '0013922-19.2007.8.26.0405'],
+  abstention_reasons: ['A política exige três sentenças materialmente comparáveis para publicar probabilidades.'],
+  analysis: {
+    synthetic: true,
+    demand: 'Aposentada com descontos associativos não autorizados; pedidos declaratório, cessação, restituição e dano moral.',
+    methodology: 'Fatos 35%, tese 30%, pedido/resultado 25% e fase 10%; só sentenças com aderência de pelo menos 65% entram no cálculo.',
+    comparisons: [
+      { id: '1023372-41.2022.8.26.0405', score: 0.18, result: 'Não comparável', reason: 'Cobrança de empréstimo bancário.' },
+      { id: '1002937-34.2022.8.26.0506', score: 0.94, result: 'Parcialmente favorável à autora', reason: 'Reconheceu inexistência, cessação e restituição simples; rejeitou dano moral.' },
+      { id: '0013922-19.2007.8.26.0405', score: 0.12, result: 'Não comparável', reason: 'Execução hipotecária.' },
+    ],
+    conclusion: 'Há um precedente fortemente aderente, mas ainda não uma base suficiente para divulgar uma probabilidade.',
+  },
 }
 
 const initialEdges: Array<[NodeId, NodeId]> = [
@@ -719,7 +731,8 @@ function InspectorField({ label, children }: { label: string; children: React.Re
 }
 
 function DataPanel({ result, mode }: { result: AnalysisResult; mode: RunMode }) {
-  return <div className="panel-content"><div className="panel-heading"><div className="eyebrow">Validated output</div><h2>AnalysisResult</h2><span>schema v0.1 · {mode}</span></div><div className="json-card"><div><span>repetitividade</span><strong>{result.repetitividade ?? null}</strong></div><div><span>exito</span><strong>{result.exito ?? null}</strong></div><div><span>evidence_ids</span><strong>[{result.evidence_ids?.map((id) => `"${id}"`).join(', ') || ''}]</strong></div><div><span>calibration_status</span><strong>{result.calibration_status || null}</strong></div></div><div className="null-note"><AlertCircle size={14} /> null significa desconhecido ou não medido; zero é um valor observado.</div></div>
+  const analysis = result.analysis
+  return <div className="panel-content"><div className="panel-heading"><div className="eyebrow">Validated output</div><h2>Relatório de comparação</h2><span>schema v0.1 · {mode}</span></div><div className="json-card"><div><span>repetitividade</span><strong>{result.repetitividade ?? null}</strong></div><div><span>êxito</span><strong>{result.exito ?? null}</strong></div><div><span>evidências</span><strong>{result.evidence_ids?.length || 0}</strong></div><div><span>calibration_status</span><strong>{result.calibration_status || null}</strong></div></div>{analysis && <><InspectorField label={analysis.synthetic ? 'Demanda sintética' : 'Demanda'}><p>{analysis.demand}</p></InspectorField><InspectorField label="Método"><p>{analysis.methodology}</p></InspectorField><InspectorField label="Sentenças lidas"><div className="connections-list">{analysis.comparisons.map((item) => <div className="connection-row" key={item.id}><span className="connection-direction input">{Math.round(item.score * 100)}%</span><span className="connection-label"><strong>{item.id}</strong><br />{item.result}: {item.reason}</span></div>)}</div></InspectorField><InspectorField label="Conclusão"><p>{analysis.conclusion}</p></InspectorField></>}{result.abstention_reasons?.map((reason) => <div className="null-note" key={reason}><AlertCircle size={14} /> {reason}</div>)}<div className="null-note"><AlertCircle size={14} /> null significa desconhecido ou não medido; zero é um valor observado.</div></div>
 }
 
 function LogsPanel({ events }: { events: Event[] }) {

@@ -51,6 +51,20 @@ class SuccessAssessment(BaseModel):
     rationale: str
 
 
+class EvidenceComparison(BaseModel):
+    """Leitura de uma sentença em relação à demanda, nunca um veredito isolado."""
+
+    evidence_id: str
+    factual_match: float = Field(ge=0, le=1)
+    legal_match: float = Field(ge=0, le=1)
+    requested_outcome_match: float = Field(ge=0, le=1)
+    procedural_match: float = Field(ge=0, le=1)
+    material_differences: list[str] = Field(default_factory=list)
+    outcome: Literal["favorable", "unfavorable", "mixed", "unknown"]
+    outcome_basis: str
+    excerpts: list[str] = Field(default_factory=list, max_length=3)
+
+
 class DemandAssessment(BaseModel):
     """Saída experimental; requer revisão jurídica humana."""
 
@@ -58,6 +72,9 @@ class DemandAssessment(BaseModel):
     exito: SuccessAssessment
     evidence_ids: list[str] = Field(default_factory=list)
     evidence_summary: list[str] = Field(default_factory=list)
+    comparisons: list[EvidenceComparison] = Field(default_factory=list)
+    methodology: str = ""
+    report_markdown: str = ""
     limitations: list[str] = Field(default_factory=list)
     review_required: Literal[True] = True
     calibration_status: Literal["not_validated"] = "not_validated"
