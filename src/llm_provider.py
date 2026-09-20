@@ -35,9 +35,9 @@ class LLMProvider:
 
     def __init__(self) -> None:
         load_dotenv()
-        self.api_key = os.getenv("LLM_API_KEY")
-        self.base_url = os.getenv("LLM_BASE_URL")
-        self.model = os.getenv("LLM_MODEL", "text")
+        self.api_key = os.getenv("LLM_API_KEY") or os.getenv("NEURALAKE_API_KEY")
+        self.base_url = os.getenv("LLM_BASE_URL") or os.getenv("NEURALAKE_BASE_URL")
+        self.model = os.getenv("LLM_MODEL") or os.getenv("NEURALAKE_MODEL", "text")
         self.offline = os.getenv("OFFLINE_MODE", "false").lower() == "true"
 
     def structured(self, system: str, user: str, schema: type[T]) -> T:
