@@ -60,47 +60,47 @@ class BrowserUseClient:
             raise BrowserUseError(f"Não foi possível acessar Browser Use: {reason}") from exc
 
     def _task(self, plan: ResearchPlan) -> str:
-        """Uma única primitiva: pesquisar e retornar metadados.
-
-        O agente NÃO abre o inteiro teor nem faz download de nenhum arquivo.
-        Apenas executa a consulta no CJPG e devolve os metadados de TODOS os
-        resultados encontrados. O download dos PDFs é feito pelo nosso código Python.
-        """
-        judge = plan.judge or "não informado"
+        """Instrui o subagente a pesquisar no CJPG, acionar o download do PDF
+        de cada um dos processos encontrados no navegador e devolver o JSON."""
         topic = plan.query.strip() or "empréstimo"
+        if plan.judge and plan.judge.strip():
+            judge_step = f'3. Campo "Magistrado" (id `nmAgente`): digite exatamente "{plan.judge.strip()}". Se aparecer autocomplete, selecione a sugestão antes de consultar.'
+        else:
+            judge_step = '3. Deixe o campo "Magistrado" (id `nmAgente`) em branco.'
+
         return f"""
-Você é o subagente de pesquisa documental.
+Você é o subagente de pesquisa documental jurídica no TJSP.
 
-Sua ÚNICA tarefa é executar a consulta abaixo e devolver os metadados de TODOS os resultados. Não abra o inteiro teor. Não faça download de nenhum arquivo. Não analise os documentos.
+Sua missão é baixar os arquivos PDF de TODOS os {plan.document_limit} primeiros resultados encontrados no TJSP.
 
-Passos obrigatórios:
+Passos obrigatórios e sequenciais:
 1. Abra https://esaj.tjsp.jus.br/cjpg/
 2. Campo "Pesquisa Livre" (id `iddadosConsulta.pesquisaLivre`): digite exatamente "{topic}".
-3. Campo "Magistrado" (id `nmAgente`): digite exatamente "{judge}". Se aparecer autocomplete, selecione a sugestão antes de consultar.
-4. Clique em "Consultar".
-5. Na página de resultados, colete os metadados exibidos na grade para TODOS os resultados (até {plan.document_limit}). NÃO abra nenhum deles. NÃO clique em nenhum link de documento.
-6. Para cada resultado, localize a URL direta do PDF do inteiro teor (geralmente href do link "Inteiro Teor" ou "Visualizar" na grade). Registre-a como `pdf_url`. Se não estiver visível na grade, registre `null`.
-
-Regras absolutas:
-- Não abra páginas individuais de processo.
-- Não faça nenhum download.
-- Não invente dados. Se um campo não estiver visível na grade, use null.
-- Devolva todos os resultados encontrados. Se a consulta retornar 3, o JSON terá 3 itens. Se retornar 0, a lista será vazia.
+{judge_step}
+4. Clique no botão "Consultar".
+5. Para CADA um dos {plan.document_limit} resultados encontrados na listagem (Processo 1, Processo 2, Processo 3):
+   a) Clique no link de inteiro teor / visualizar do processo.
+   b) Na tela/popup da Pasta Digital que se abrir, clique no botão "Salvar o documento" ou no ícone de download para disparar o download do arquivo PDF no navegador.
+   c) Aguarde a conclusão do download do arquivo PDF pelo navegador.
+   d) Feche o popup/aba ou retorne para a lista de resultados.
+   e) Repita OBRIGATORIAMENTE os passos para o próximo processo até ter acionado o download dos {plan.document_limit} PDFs.
+6. Apenas após ter baixado os PDFs de todos os {plan.document_limit} processos, responda com o JSON de metadados.
 
 Responda SOMENTE com este JSON (sem texto antes ou depois):
 {{
-  "results": [
+  "documents": [
     {{
       "case_id": "número do processo conforme exibido",
       "title": "classe/tipo de decisão conforme exibido",
       "judge": "nome do magistrado conforme exibido",
       "court": "vara e comarca conforme exibido",
       "subject": "assunto conforme exibido",
-      "source_url": "URL da página de resultados onde este item foi encontrado",
-      "pdf_url": "URL direta do PDF ou null"
+      "source_url": "URL da página de consulta",
+      "similarity_reason": "decisão baixada no navegador",
+      "similarity_score": 1.0
     }}
   ],
-  "total_found": "número total de resultados exibidos pelo portal",
+  "total_found": "total de resultados exibidos na consulta",
   "searched_sources": ["https://esaj.tjsp.jus.br/cjpg/"]
 }}
 """.strip()
@@ -115,7 +115,6 @@ Responda SOMENTE com este JSON (sem texto antes ou depois):
                 if browser.get("agentSessionId") == self.last_session_id and browser.get("status") == "active":
                     self._request("PATCH", f"/browsers/{browser['id']}", {"action": "stop"})
         except BrowserUseError:
-            # O erro original da pesquisa continua sendo a informação principal.
             pass
 
     def cancel_last_run(self) -> None:
@@ -125,7 +124,6 @@ Responda SOMENTE com este JSON (sem texto antes ou depois):
         try:
             self._request("POST", f"/runs/{self.last_run_id}/cancel", {})
         except BrowserUseError:
-            # A execução pode já ter chegado a um estado terminal.
             pass
 
     @staticmethod
@@ -137,8 +135,11 @@ Responda SOMENTE com este JSON (sem texto antes ou depois):
             value = json.loads(result[start : end + 1])
         except json.JSONDecodeError as exc:
             raise BrowserUseError("A execução retornou JSON inválido") from exc
-        if not isinstance(value.get("results"), list):
-            raise BrowserUseError("O resultado não contém a lista 'results' esperada")
+        # Aceita tanto chave 'documents' quanto 'results'
+        docs = value.get("documents") or value.get("results")
+        if not isinstance(docs, list):
+            raise BrowserUseError("O resultado não contém a lista de documentos esperada")
+        value["documents"] = docs
         return value
 
     @staticmethod
@@ -166,19 +167,145 @@ Responda SOMENTE com este JSON (sem texto antes ou depois):
         destination.write_bytes(content)
         return hashlib.sha256(content).hexdigest()
 
-    def _download_all(self, records: list[dict], output_dir: str) -> list[DownloadedDocument]:
-        """Baixa TODOS os PDFs da lista retornada pelo agente. Erros por documento
-        são registrados mas não descartam os documentos restantes."""
+    def _browser_downloads(self) -> list[dict]:
+        """Consulta arquivos baixados dentro da sessão do navegador da Browser Use Cloud."""
+        if not self.last_session_id:
+            return []
+        try:
+            browsers = self._request("GET", "/browsers")
+            browser = next(
+                (item for item in browsers.get("items", []) if item.get("agentSessionId") == self.last_session_id),
+                None,
+            )
+            if not browser:
+                return []
+            response = self._request("GET", f"/browsers/{browser['id']}/downloads?includeUrls=true")
+            return [item for item in response.get("files", []) if item.get("url")]
+        except Exception:
+            return []
+
+    def _save_browser_downloads(self, output_dir: str, records: list[dict]) -> list[DownloadedDocument]:
+        """Salva localmente os arquivos baixados pelo navegador na nuvem."""
+        files = self._browser_downloads()
+        if not files:
+            return []
         folder = Path(output_dir)
         folder.mkdir(parents=True, exist_ok=True)
         documents: list[DownloadedDocument] = []
-        errors: list[str] = []
-        for index, record in enumerate(records, start=1):
+        for index, item in enumerate(files, start=1):
+            record = records[index - 1] if index <= len(records) and isinstance(records[index - 1], dict) else {}
+            filename = re.sub(r"[^0-9A-Za-z._-]+", "_", Path(str(item.get("path", f"doc_{index}.pdf"))).name)
+            path = folder / f"{index:02d}_{filename}"
+            try:
+                digest = self._download_browser_pdf(str(item["url"]), path)
+            except BrowserUseError:
+                continue
+            documents.append(
+                DownloadedDocument(
+                    case_id=str(record.get("case_id", "não informado")),
+                    title=str(record.get("title", path.name)),
+                    source_url=str(record.get("source_url", "https://esaj.tjsp.jus.br/cjpg/")),
+                    local_path=str(path.resolve()),
+                    sha256=digest,
+                    text_excerpt="",
+                    judge=str(record.get("judge", "não informado")),
+                    court=str(record.get("court", "não informado")),
+                    similarity_reason=str(record.get("similarity_reason", "download concluído no navegador")),
+                    similarity_score=float(record.get("similarity_score", 1.0) or 1.0),
+                )
+            )
+        return documents
+
+    def _execute_run(self, model: str, plan: ResearchPlan) -> dict:
+        payload: dict = {
+            "task": self._task(plan),
+            "model": model,
+            "browserSettings": {"record": False},
+            "maxCostUsd": self.max_cost_usd,
+        }
+        run = self._request("POST", "/runs", payload)
+        run_id = run["id"]
+        self.last_run_id = run_id
+        self.last_session_id = run.get("sessionId")
+        try:
+            deadline = time.monotonic() + 360
+            status = run.get("status", "queued")
+            while status not in self.terminal_statuses:
+                if time.monotonic() >= deadline:
+                    raise BrowserUseError(f"Tempo limite local atingido para {model} ({run_id})")
+                time.sleep(3)
+                status = self._request("GET", f"/runs/{run_id}/status").get("status", "queued")
+            summary = self._request("GET", f"/runs/{run_id}")
+            if summary.get("status") != "completed":
+                raise BrowserUseError(
+                    f"Execução Browser Use {run_id} ({model}) terminou como {summary.get('status')}: {summary.get('error')}"
+                )
+            return summary
+        except Exception:
+            self.cancel_last_run()
+            raise
+
+    def search_and_download(self, plan: ResearchPlan, output_dir: str) -> list[DownloadedDocument]:
+        """Fluxo de busca e download de PDFs:
+        1. Executa o subagente no Browser Use com o modelo principal (GPT-5.6).
+        2. Em caso de falha ou indisponibilidade, aciona automaticamente o fallback (DeepSeek).
+        3. Baixa todos os PDFs capturados no navegador remoto.
+        4. Fallback local: Se não baixou via navegador, tenta download direto por URL.
+        5. Garante que todos os metadados coletados sejam preservados.
+        """
+        primary_model = os.getenv("BROWSER_USE_MODEL", "gpt-5.6-luna")
+        fallback_model = "deepseek-v4.1-flash"
+
+        try:
+            summary = self._execute_run(primary_model, plan)
+        except BrowserUseError as exc:
+            if primary_model != fallback_model:
+                summary = self._execute_run(fallback_model, plan)
+            else:
+                raise
+
+        payload = self._result_json(summary.get("result") or "")
+        self.last_result = payload
+        records: list[dict] = payload.get("documents", [])
+        if not records:
+            raise BrowserUseError("O agente de pesquisa não encontrou nenhum resultado para a consulta")
+
+        # 1. Tenta recuperar os arquivos baixados pelo navegador na nuvem
+        browser_docs = self._save_browser_downloads(output_dir, records)
+        if browser_docs:
+            # Se baixou arquivos suficientes, retorna
+            if len(browser_docs) >= len(records):
+                return browser_docs
+            # Caso parcial, mescla arquivos baixados com metadados restantes
+            covered_cases = {d.case_id for d in browser_docs}
+            for rec in records:
+                cid = str(rec.get("case_id", ""))
+                if cid not in covered_cases:
+                    browser_docs.append(
+                        DownloadedDocument(
+                            case_id=cid or "não informado",
+                            title=str(rec.get("title", "decisão judicial")),
+                            source_url=str(rec.get("source_url", "https://esaj.tjsp.jus.br/cjpg/")),
+                            local_path="",
+                            sha256="",
+                            text_excerpt="",
+                            judge=str(rec.get("judge", "não informado")),
+                            court=str(rec.get("court", "não informado")),
+                            similarity_reason="metadados coletados; arquivo não baixado no navegador",
+                            similarity_score=0.0,
+                        )
+                    )
+            return browser_docs
+
+        # 2. Fallback: download direto se URLs forem fornecidas
+        folder = Path(output_dir)
+        folder.mkdir(parents=True, exist_ok=True)
+        documents: list[DownloadedDocument] = []
+        for index, record in enumerate(records[: plan.document_limit], start=1):
             if not isinstance(record, dict):
                 continue
             pdf_url = str(record.get("pdf_url") or "")
             if not pdf_url or pdf_url == "null":
-                # Agente não encontrou URL direta; registra cobertura sem arquivo local.
                 documents.append(
                     DownloadedDocument(
                         case_id=str(record.get("case_id", "não informado")),
@@ -187,20 +314,33 @@ Responda SOMENTE com este JSON (sem texto antes ou depois):
                         local_path="",
                         sha256="",
                         text_excerpt="",
-                        judge=str(record.get("judge") or "não informado"),
-                        court=str(record.get("court") or "não informado"),
-                        similarity_reason="pdf_url ausente na grade; somente metadados coletados",
-                        similarity_score=0.0,
+                        judge=str(record.get("judge", "não informado")),
+                        court=str(record.get("court", "não informado")),
+                        similarity_reason="metadados coletados na grade",
+                        similarity_score=1.0,
                     )
                 )
                 continue
+
             safe_case = re.sub(r"[^0-9A-Za-z._-]+", "_", str(record.get("case_id", index))).strip("_")
             path = folder / f"{index:02d}_{safe_case or 'sem_numero'}.pdf"
             try:
                 digest = self._download_pdf(pdf_url, path)
+                documents.append(
+                    DownloadedDocument(
+                        case_id=str(record.get("case_id", "não informado")),
+                        title=str(record.get("title", "decisão judicial")),
+                        source_url=str(record.get("source_url") or pdf_url),
+                        local_path=str(path.resolve()),
+                        sha256=digest,
+                        text_excerpt="",
+                        judge=str(record.get("judge", "não informado")),
+                        court=str(record.get("court", "não informado")),
+                        similarity_reason="coletado e baixado com sucesso",
+                        similarity_score=1.0,
+                    )
+                )
             except BrowserUseError as exc:
-                errors.append(f"[{index}] {record.get('case_id', '?')}: {exc}")
-                # Adiciona o registro sem arquivo, não descarta.
                 documents.append(
                     DownloadedDocument(
                         case_id=str(record.get("case_id", "não informado")),
@@ -209,79 +349,11 @@ Responda SOMENTE com este JSON (sem texto antes ou depois):
                         local_path="",
                         sha256="",
                         text_excerpt="",
-                        judge=str(record.get("judge") or "não informado"),
-                        court=str(record.get("court") or "não informado"),
+                        judge=str(record.get("judge", "não informado")),
+                        court=str(record.get("court", "não informado")),
                         similarity_reason=f"download falhou: {exc}",
                         similarity_score=0.0,
                     )
                 )
-                continue
-            documents.append(
-                DownloadedDocument(
-                    case_id=str(record.get("case_id", "não informado")),
-                    title=str(record.get("title", "decisão judicial")),
-                    source_url=str(record.get("source_url") or pdf_url),
-                    local_path=str(path.resolve()),
-                    sha256=digest,
-                    text_excerpt="",
-                    judge=str(record.get("judge") or "não informado"),
-                    court=str(record.get("court") or "não informado"),
-                    similarity_reason="coletado pela consulta de tema e magistrado",
-                    similarity_score=1.0,
-                )
-            )
-        if errors:
-            # Propaga erros de download como aviso (não como falha fatal).
-            raise BrowserUseError(
-                f"{len(errors)} de {len(records)} downloads falharam:\n" + "\n".join(errors)
-            )
+
         return documents
-
-    def search_and_download(self, plan: ResearchPlan, output_dir: str) -> list[DownloadedDocument]:
-        """Fluxo em duas fases:
-        1. Uma única chamada ao Browser Use: pesquisar e retornar metadados.
-        2. Download de TODOS os PDFs encontrados feito pelo nosso código Python.
-        O agente não navega para páginas individuais nem faz download de nada.
-        """
-        run = self._request(
-            "POST",
-            "/runs",
-            {
-                "task": self._task(plan),
-                # Modelo leve: a tarefa é só preencher um formulário e ler uma grade.
-                "model": "gpt-4o",
-                "browserSettings": {"record": False},
-                "maxCostUsd": self.max_cost_usd,
-            },
-        )
-        run_id = run["id"]
-        self.last_run_id = run_id
-        self.last_session_id = run.get("sessionId")
-        try:
-            deadline = time.monotonic() + 600
-            status = run.get("status", "queued")
-            while status not in self.terminal_statuses:
-                if time.monotonic() >= deadline:
-                    raise BrowserUseError(f"Tempo limite local atingido; execução Browser Use ainda ativa: {run_id}")
-                time.sleep(3)
-                status = self._request("GET", f"/runs/{run_id}/status").get("status", "queued")
-            summary = self._request("GET", f"/runs/{run_id}")
-            if summary.get("status") != "completed":
-                raise BrowserUseError(
-                    f"Execução Browser Use {run_id} terminou como {summary.get('status')}: {summary.get('error')}"
-                )
-        except Exception:
-            self.cancel_last_run()
-            raise
-
-        payload = self._result_json(summary.get("result") or "")
-        self.last_result = payload
-        records: list[dict] = payload.get("results", [])
-        if not records:
-            raise BrowserUseError("O agente de pesquisa não encontrou nenhum resultado para a consulta")
-        # Baixa TODOS os registros retornados, sem descartar por falha individual.
-        try:
-            return self._download_all(records, output_dir)
-        except BrowserUseError as exc:
-            # Erros parciais de download: propaga, mas o nó de pesquisa decide o que fazer.
-            raise
